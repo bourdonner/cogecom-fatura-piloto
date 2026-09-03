@@ -160,18 +160,17 @@
   /* o feixe: linha nítida + a luz que ela joga sobre o trecho ainda não varrido */
   .scan-beam{
     position:absolute; left:-12px; right:-12px; top:0; height:2px; z-index:2; opacity:0;
-    background:linear-gradient(90deg, rgba(147,197,253,0), var(--bolt-soft) 14%, var(--bolt-hot) 50%, var(--bolt-soft) 86%, rgba(147,197,253,0));
-    box-shadow:0 0 12px 2px rgba(147,197,253,.75), 0 0 34px 8px rgba(147,197,253,.3);
+    background:linear-gradient(90deg, rgba(147,197,253,0), var(--bolt-soft) 12%, var(--bolt-hot) 50%, var(--bolt-soft) 88%, rgba(147,197,253,0));
+    /* brilho deslocado para baixo de propósito: se ele subir para o lado já
+       apagado, o olho lê a borda do corte no meio do brilho e não na linha.
+       (máscara não serve aqui — num elemento de 2px ela recorta os pseudos) */
+    box-shadow:0 1px 5px 0 rgba(147,197,253,.9), 0 4px 16px 1px rgba(147,197,253,.4);
   }
-  /* o brilho de cima cobre a borda do corte; o de baixo é a luz sobre o
-     trecho ainda intacto. radiais, para não terem canto reto */
-  .scan-beam::before{
-    content:''; position:absolute; left:0; right:0; bottom:100%; height:26px;
-    background:radial-gradient(72% 100% at 50% 100%, rgba(191,219,254,.5), rgba(191,219,254,0) 74%);
-  }
+  /* só luz para baixo, sobre o papel que ainda existe. radial, para não deixar
+     canto reto quando o feixe passa do fim da folha */
   .scan-beam::after{
-    content:''; position:absolute; left:0; right:0; top:100%; height:46px;
-    background:radial-gradient(72% 100% at 50% 0%, rgba(147,197,253,.32), rgba(147,197,253,0) 72%);
+    content:''; position:absolute; left:0; right:0; top:100%; height:52px;
+    background:radial-gradient(72% 100% at 50% 0%, rgba(147,197,253,.42), rgba(147,197,253,0) 74%);
   }
   /* acende parado na borda de cima, varre, e apaga ao chegar no fim da folha */
   .slide.is-active .scan-beam{
@@ -247,6 +246,8 @@
   /* tela final: mesmo enquadramento, mas quem empurra as ações é o parágrafo */
   .slide.end-slide .slide-content{ justify-content:flex-start; padding:27dvh 36px 88px; }
   .slide.end-slide .slide-content > *{ flex-shrink:0; }
+  /* folga lateral para o filter do revealUp não cortar a troca de palavra */
+  .slide.end-slide .headline{ padding-inline:30px; margin-inline:-30px; }
   .slide.end-slide .slide-content > .sub{ margin-bottom:auto; }
   /* sem encolher: em flex o hero seria comprimido abaixo do conteúdo e o
      texto passaria por baixo do bloco de baixo em vez de empurrá-lo */
@@ -463,8 +464,11 @@
   }
   .swap-old, .swap-new{
     display:inline-block; white-space:nowrap;
-    transition:opacity .4s ease, transform .4s cubic-bezier(.3,.9,.35,1.1);
+    transition:opacity .38s ease, transform .38s cubic-bezier(.3,.9,.35,1.1);
   }
+  /* a nova entra com atraso: enquanto a caixa cresce, "economia" ainda passaria
+     da borda do h1 — e o filter herdado do revealUp recorta o que sai dela */
+  .swap-new{ transition-delay:.24s; }
   .swap-old{ position:relative; }
   .swap-new{ position:absolute; left:0; top:0; opacity:0; transform:translateY(.22em); }
   .swap-old::after{
@@ -603,6 +607,15 @@
         <button class="chip" data-v="0" aria-pressed="false">Cobertura total</button>
         <button class="chip" data-v="1" aria-pressed="false">Com saldo</button>
         <button class="chip" data-v="2" aria-pressed="false">Parcial</button>
+      </div>
+    </div>
+
+    <div class="gate-field">
+      <span class="gate-label">Tempo de COGECOM</span>
+      <div class="gate-chips" id="gateTempo">
+        <button class="chip" data-v="3" aria-pressed="false">3 meses</button>
+        <button class="chip" data-v="12" aria-pressed="true">1 ano</button>
+        <button class="chip" data-v="60" aria-pressed="false">5 anos</button>
       </div>
     </div>
 
@@ -1517,8 +1530,8 @@ small{color:#78716c}
       saudacao:'Oi, Thiago!',
       nomeCompleto:'Thiago Vinicius Rodrigues de Souza', unidade:'Unidade 5682943',
       consumo:296, creditoTotal:310, saldoSplit:{credito:248, saldo:48}, creditoParcial:237,
-      arvores:2, co2:94, rota:{km:600, de:'São Paulo', para:'Belo Horizonte'},
-      base:306.60, descontoMes:43.50, acumulado:287.00, deducoes:[13.30, 43.50, 3.00],
+      arvores:2, co2Mes:14,
+      base:306.60, descontoMes:43.50, deducoes:[13.30, 43.50, 3.00],
       copy:{
         sub1:'Sua conta de novembro cabe em 30 segundos. Veja o que a sua energia fez por você.',
         consumoTotal:'Seu consumo foi 100% coberto por energia limpa e renovável!',
@@ -1535,8 +1548,8 @@ small{color:#78716c}
       saudacao:'Oi, Residencial Aurora!',
       nomeCompleto:'Condomínio Residencial Aurora', unidade:'Unidade 7714208',
       consumo:1240, creditoTotal:1290, saldoSplit:{credito:1040, saldo:200}, creditoParcial:992,
-      arvores:8, co2:417, rota:{km:2660, de:'São Paulo', para:'Recife'},
-      base:1284.60, descontoMes:182.40, acumulado:1203.80, deducoes:[55.70, 182.40, 3.00],
+      arvores:8, co2Mes:59,
+      base:1284.60, descontoMes:182.40, deducoes:[55.70, 182.40, 3.00],
       copy:{
         sub1:'A conta de novembro da organização cabe em 30 segundos. Veja o que essa energia fez por ela.',
         consumoTotal:'O consumo da organização foi 100% coberto por energia limpa e renovável!',
@@ -1551,9 +1564,33 @@ small{color:#78716c}
     }
   };
   let PERFIL = PERFIS.pf;
+  let MESES = 12;
 
-  function aplicarPerfil(chave){
+  // destinos a partir de São Paulo, em km de estrada (aproximados)
+  const ROTAS = [
+    {km:80,   para:'Santos'},          {km:230,  para:'Ubatuba'},
+    {km:430,  para:'Rio de Janeiro'},  {km:590,  para:'Belo Horizonte'},
+    {km:1015, para:'Brasília'},        {km:1960, para:'Salvador'},
+    {km:2660, para:'Recife'},          {km:3900, para:'Manaus'}
+  ];
+  const KM_POR_KG = 6.4;   // ~600 km para 94 kg de CO₂
+
+  // escolhe a rota que melhor representa a distância, repetindo-a quando
+  // preciso. A penalidade por repetição faz uma viagem só ganhar de várias
+  // quando o erro é parecido — "a Ubatuba" lê melhor que "a Santos 3 vezes".
+  function escolherRota(km){
+    let melhor = null;
+    for(const r of ROTAS){
+      const vezes = Math.max(1, Math.round(km / r.km));
+      const erro = Math.abs(km - r.km * vezes) + (vezes - 1) * km * 0.02;
+      if(!melhor || erro < melhor.erro) melhor = { para:r.para, vezes, erro };
+    }
+    return melhor;
+  }
+
+  function aplicarPerfil(chave, meses){
     const P = PERFIL = PERFIS[chave] || PERFIS.pf;
+    MESES = meses || 12;
     const q = sel => document.querySelector(sel);
 
     q('.greeting').textContent = P.saudacao;
@@ -1581,13 +1618,20 @@ small{color:#78716c}
     q('.trees').dataset.count = P.arvores;
     q('[data-theme="teal"] .sentence-num .num').textContent = P.arvores + ' árvores';
 
-    q('[data-theme="amber"] .sentence-num .num .cu').dataset.count = P.co2;
-    q('.cu-map').dataset.count = P.rota.km;
-    q('.map-city.from').textContent = P.rota.de;
-    q('.map-city.to').textContent = P.rota.para;
+    // acumulados: proporcionais ao tempo de cooperado
+    const co2 = Math.round(P.co2Mes * MESES);
+    const km  = Math.round(co2 * KM_POR_KG);
+    const rota = escolherRota(km);
+    q('[data-theme="amber"] .sentence-num .num .cu').dataset.count = co2;
+    q('.cu-map').dataset.count = km;
+    q('.map-city.from').textContent = 'São Paulo';
+    q('.map-city.to').textContent = rota.para;
+    q('.map-lbl').textContent = rota.vezes > 1
+      ? 'O mesmo que um carro emitiria indo de São Paulo a ' + rota.para + ' ' + rota.vezes + ' vezes'
+      : 'O mesmo que um carro emitiria numa viagem de São Paulo a ' + rota.para;
 
     q('[data-theme="lime"] .sentence-num .num .cu').dataset.count = P.descontoMes.toFixed(2);
-    q('.cu-piggy').dataset.count = P.acumulado.toFixed(2);
+    q('.cu-piggy').dataset.count = (P.descontoMes * MESES).toFixed(2);
 
     PAY_BASE = P.base;
     document.querySelectorAll('#deductList .deduct').forEach((d,i)=> d.dataset.value = P.deducoes[i].toFixed(2));
@@ -1606,7 +1650,7 @@ small{color:#78716c}
   const gate = document.getElementById('gate');
   if(!gate) iniciar();
   else {
-    let perfil = 'pf', descontos = '3';
+    let perfil = 'pf', descontos = '3', tempo = '12';
     const marcar = (id, v) => document.querySelectorAll('#'+id+' .chip')
       .forEach(c => c.setAttribute('aria-pressed', String(c.dataset.v === v)));
     const grupo = (id, aoEscolher) => {
@@ -1620,9 +1664,10 @@ small{color:#78716c}
     grupo('gatePerfil', v => perfil = v);
     grupo('gateVariante', v => ctxForced = (v === '-1' ? null : parseInt(v, 10)));
     grupo('gateDescontos', v => descontos = v);
+    grupo('gateTempo', v => tempo = v);
 
     function comecar(){
-      aplicarPerfil(perfil);
+      aplicarPerfil(perfil, parseInt(tempo, 10));
       aplicarDescontos(descontos);
       gate.classList.add('off');
       iniciar();
@@ -1635,11 +1680,13 @@ small{color:#78716c}
       const sorteia = arr => arr[Math.floor(Math.random()*arr.length)];
       perfil = sorteia(['pf','pj']);
       descontos = sorteia(['3','2','1']);
+      tempo = sorteia(['3','12','60']);
       const variante = sorteia(['0','1','2']);
       ctxForced = parseInt(variante, 10);
       marcar('gatePerfil', perfil);
       marcar('gateVariante', variante);
       marcar('gateDescontos', descontos);
+      marcar('gateTempo', tempo);
       comecar();
     });
   }
