@@ -1,0 +1,1389 @@
+<title>COGECOM Wrapped</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800;900&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet">
+<style>
+  :root{
+    --font-head:'Sora','Inter',system-ui,sans-serif;
+    --font-body:'Inter',system-ui,sans-serif;
+    color-scheme: dark;
+    /* varredura da fatura (tela 1): feixe, máscara e partículas leem daqui */
+    --scan-start:.95s;
+    --scan-dur:1.45s;
+    /* corte e feixe percorrem a mesma distância: a altura exata da folha */
+    --scan-travel:318px;
+    --scan-ease:cubic-bezier(.45,0,.85,1);
+    /* o feixe, os cacos e o raio saem todos desta cor */
+    --bolt:#93c5fd;
+    --bolt-soft:#bfdbfe;
+    --bolt-hot:#eaf3ff;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%; margin:0; overscroll-behavior:none; background:#05060a; font-family:var(--font-body); -webkit-font-smoothing:antialiased;}
+  body{display:flex; align-items:center; justify-content:center; height:100dvh; width:100vw; overflow:hidden;}
+  button{font-family:inherit;border:none;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  p{margin:0;}
+
+  .msr, .mss{
+    font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24;
+    font-weight:normal; font-style:normal; display:inline-block; line-height:1;
+    text-transform:none; letter-spacing:normal; word-wrap:normal; white-space:nowrap; direction:ltr;
+  }
+  .msr{font-family:'Material Symbols Rounded';}
+  .mss{font-family:'Material Symbols Sharp';}
+
+  /* ===== stage ===== */
+  .stage{
+    position:relative; width:100vw; height:100dvh; max-width:480px; max-height:960px;
+    background:#000; overflow:hidden; user-select:none; isolation:isolate;
+  }
+  @media (min-width:560px) and (min-height:640px){
+    .stage{ border-radius:32px; box-shadow:0 40px 100px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06); height:min(92dvh,960px); }
+  }
+
+  /* ===== progress bar ===== */
+  .progress-row{ position:absolute; top:0; left:0; right:0; z-index:30; display:flex; gap:5px; padding:calc(env(safe-area-inset-top,0px) + 54px) 12px 0; }
+  .seg{flex:1; height:3px; border-radius:99px; background:rgba(255,255,255,.24); overflow:hidden;}
+  .seg .fill{height:100%; width:0%; background:#fff; border-radius:99px; position:relative;}
+  .seg .fill.instant{transition:none;}
+  .seg .fill.animating{transition:width linear;}
+  .seg .fill.animating::after{ content:''; position:absolute; right:0; top:50%; width:8px; height:8px; background:#fff; border-radius:50%; transform:translate(50%,-50%); box-shadow:0 0 8px 2px rgba(255,255,255,.8); }
+
+  /* ===== header: pause left · logo center · close right ===== */
+  .top-controls{ position:absolute; top:0; left:0; right:0; z-index:30; display:flex; align-items:center; justify-content:space-between; padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 0; }
+  .icon-btn{ width:36px;height:36px; display:flex; align-items:center; justify-content:center; color:#fff; }
+  .icon-btn .msr, .icon-btn .mss{font-size:18px;}
+  .brand-logo{ height:15px; width:auto; }
+
+  /* fundo claro (economia): UI vira verde escuro para ter contraste */
+  .stage.ui-dark .icon-btn{ color:#1b3003; }
+  .stage.ui-dark .brand-logo{ filter:brightness(0) saturate(100%) invert(13%) sepia(64%) saturate(1520%) hue-rotate(62deg) brightness(94%) contrast(101%); }
+  .stage.ui-dark .seg{ background:rgba(27,48,3,.2); }
+  .stage.ui-dark .seg .fill{ background:#1b3003; }
+  .stage.ui-dark .seg .fill.animating::after{ background:#1b3003; box-shadow:0 0 8px 2px rgba(27,48,3,.5); }
+  .slide[data-theme="lime"] .nav-chevron{ border-color:rgba(27,48,3,.4); color:#1b3003; }
+  .slide[data-theme="lime"] .nav-chevron:active{ background:rgba(27,48,3,.12); }
+  .slide[data-theme="lime"] .nav-mid{ color:rgba(27,48,3,.82); }
+
+  /* ===== slides ===== */
+  .slides{position:absolute; inset:0;}
+  .slide{ position:absolute; inset:0; color:#fff; will-change:transform; transform:translateX(100%); }
+  .slides.ready .slide{transition:transform .5s cubic-bezier(.22,.7,.32,1);}
+  .slide-bg{position:absolute; inset:0; z-index:0; overflow:hidden;}
+  .grain{position:absolute; inset:0; opacity:.04; background-image:radial-gradient(rgba(255,255,255,.9) 1px, transparent 1px); background-size:3px 3px;}
+  .hero-blob{position:absolute; border-radius:50%; filter:blur(55px); opacity:.5; mix-blend-mode:screen;}
+  .hero-icon-bg{position:absolute; color:rgba(255,255,255,.07); pointer-events:none;}
+  .hero-icon-bg .msr{font-size:260px;}
+  @keyframes floatA{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(18px,-24px) scale(1.08);}}
+  @keyframes floatB{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-22px,20px) scale(.94);}}
+  @keyframes floatSlow{0%,100%{transform:translate(0,0) rotate(0deg);}50%{transform:translate(-8px,10px) rotate(-4deg);}}
+
+  /* ===== hero: a fatura de papel é varrida por um feixe e vira energia ===== */
+  .paper-stage{
+    position:absolute; top:46%; left:50%; width:236px; height:318px; margin:-159px 0 0 -118px;
+    filter:drop-shadow(0 30px 44px rgba(0,0,0,.5)); opacity:0; z-index:1;
+  }
+  .slide.is-active .paper-stage{ animation:paperIn .65s ease-out .1s forwards; }
+  @keyframes paperIn{ from{opacity:0;} to{opacity:1;} }
+
+  .paper-doc{ position:absolute; inset:0; transform:rotate(-2deg); }
+  .doc-svg{ position:absolute; top:0; left:0; width:236px; height:318px; display:block; }
+
+  /* a folha some de cima para baixo junto com o feixe: a máscara tem o dobro
+     da altura da página, então deslocá-la de 100% a 0% varre a página inteira */
+  /* a folha é cortada de cima para baixo. clip-path porque mask-size/mask-position
+     animados falham em Safari/iOS — lá o feixe passava e o conteúdo ficava */
+  .p-intact{
+    position:absolute; inset:0; overflow:hidden; border-radius:5px;
+    -webkit-clip-path:inset(0 0 0 0); clip-path:inset(0 0 0 0);
+  }
+  .slide.is-active .p-intact{ animation:scanErase var(--scan-dur) var(--scan-ease) var(--scan-start) forwards; }
+  @keyframes scanErase{
+    from{ -webkit-clip-path:inset(0 0 0 0);    clip-path:inset(0 0 0 0); }
+    to  { -webkit-clip-path:inset(100% 0 0 0); clip-path:inset(100% 0 0 0); }
+  }
+
+  /* o feixe: linha nítida + a luz que ela joga sobre o trecho ainda não varrido */
+  .scan-beam{
+    position:absolute; left:-12px; right:-12px; top:0; height:2px; z-index:2; opacity:0;
+    background:linear-gradient(90deg, rgba(147,197,253,0), var(--bolt-soft) 14%, var(--bolt-hot) 50%, var(--bolt-soft) 86%, rgba(147,197,253,0));
+    box-shadow:0 0 12px 2px rgba(147,197,253,.75), 0 0 34px 8px rgba(147,197,253,.3);
+  }
+  /* o brilho de cima cobre a borda do corte; o de baixo é a luz sobre o
+     trecho ainda intacto. radiais, para não terem canto reto */
+  .scan-beam::before{
+    content:''; position:absolute; left:0; right:0; bottom:100%; height:26px;
+    background:radial-gradient(72% 100% at 50% 100%, rgba(191,219,254,.5), rgba(191,219,254,0) 74%);
+  }
+  .scan-beam::after{
+    content:''; position:absolute; left:0; right:0; top:100%; height:46px;
+    background:radial-gradient(72% 100% at 50% 0%, rgba(147,197,253,.32), rgba(147,197,253,0) 72%);
+  }
+  /* acende parado na borda de cima, varre, e apaga ao chegar no fim da folha */
+  .slide.is-active .scan-beam{
+    animation:
+      scanIn .16s ease-out .78s forwards,
+      scanSweep var(--scan-dur) var(--scan-ease) var(--scan-start) forwards,
+      scanOut .26s ease-in calc(var(--scan-start) + var(--scan-dur)) forwards;
+  }
+  @keyframes scanIn{ from{opacity:0;} to{opacity:1;} }
+  @keyframes scanOut{ from{opacity:1;} to{opacity:0;} }
+  @keyframes scanSweep{ from{transform:translateY(0);} to{transform:translateY(var(--scan-travel));} }
+
+  /* cada faixa varrida vira cacos de luz, puxados para dentro do raio */
+  .dust-layer{ position:absolute; top:46%; left:50%; width:0; height:0; z-index:2; pointer-events:none; }
+  .dust{
+    position:absolute; top:0; left:0; opacity:0; background:#dbeafe;
+    box-shadow:0 0 6px rgba(147,197,253,.85);
+    animation:dustLift .55s cubic-bezier(.42,0,.24,1) forwards;
+  }
+  @keyframes dustLift{
+    0%  { opacity:0;   transform:translate(var(--sx),var(--sy)) rotate(var(--rot)) scale(1); }
+    16% { opacity:1;   transform:translate(calc(var(--sx) * 1.05), calc(var(--sy) - 8px)) rotate(var(--rot)) scale(1); }
+    72% { opacity:.95; }
+    100%{ opacity:0;   transform:translate(0,0) rotate(calc(var(--rot) * 2.4)) scale(.18); }
+  }
+
+  /* fake bill content */
+  .d-head{ height:36px; background:#22345f; display:flex; align-items:center; gap:7px; padding:0 13px; }
+  .d-logo{ width:38px; height:9px; border-radius:2px; background:rgba(255,255,255,.9); }
+  .d-headline{ flex:1; height:4px; border-radius:2px; background:rgba(255,255,255,.32); }
+  .d-body{ padding:13px; }
+  .d-line{ height:4px; border-radius:2px; background:rgba(28,25,23,.15); margin-bottom:8px; }
+  .d-grid{ display:grid; grid-template-columns:1fr 1fr; gap:9px 12px; margin:12px 0; }
+  .d-cell .t{ height:3px; width:52%; background:rgba(28,25,23,.12); border-radius:2px; margin-bottom:5px; }
+  .d-cell .v{ height:6px; width:78%; background:rgba(28,25,23,.24); border-radius:2px; }
+  .d-box{ border:1px solid rgba(28,25,23,.14); border-radius:5px; padding:9px 10px; margin:12px 0; background:rgba(28,25,23,.03); }
+  .d-box .lbl{ height:3px; width:38%; background:rgba(28,25,23,.14); border-radius:2px; margin-bottom:7px; }
+  .d-box .big{ height:12px; width:64%; background:rgba(28,25,23,.32); border-radius:3px; }
+  .d-barcode{ height:30px; margin-top:14px; opacity:.72;
+    background:repeating-linear-gradient(90deg,#1c1917 0 2px, transparent 2px 4px, #1c1917 4px 5px, transparent 5px 9px, #1c1917 9px 11px, transparent 11px 13px); }
+
+  /* atrás da fatura (z-index abaixo do .paper-stage): o raio vai sendo
+     revelado conforme o feixe consome a folha que o cobre */
+  .digital-spark{
+    position:absolute; top:46%; left:50%; width:70px; height:70px; margin:-35px 0 0 -35px;
+    display:flex; align-items:center; justify-content:center; opacity:0; z-index:0;
+  }
+  .digital-spark .msr{ font-size:38px; color:var(--bolt); }
+  /* nasce fraco junto com o feixe, ganha corpo a cada caco que chega, dá o
+     clarão quando o último pousa e só então sobe — tudo num keyframe só,
+     porque é na troca de animação que apareceria o salto */
+  .slide.is-active .digital-spark{ animation:sparkAbsorb 2.9s linear var(--scan-start) forwards; }
+  @keyframes sparkAbsorb{
+    0%  { opacity:0;   transform:translateY(0) scale(.35); filter:drop-shadow(0 0 4px rgba(147,197,253,.18)); }
+    10% { opacity:.38; transform:translateY(0) scale(.7);  filter:drop-shadow(0 0 8px rgba(147,197,253,.3)); }
+    50% { opacity:.6;  transform:translateY(0) scale(.88); filter:drop-shadow(0 0 13px rgba(147,197,253,.42)); }
+    61% { opacity:.82; transform:translateY(0) scale(.98); filter:drop-shadow(0 0 19px rgba(147,197,253,.58)); }
+    67% { opacity:1;   transform:translateY(0) scale(1.34); filter:drop-shadow(0 0 36px rgba(191,219,254,.95)); }
+    73% { opacity:1;   transform:translateY(0) scale(1);    filter:drop-shadow(0 0 16px rgba(147,197,253,.6));
+          animation-timing-function:cubic-bezier(.3,.8,.3,1); }
+    100%{ opacity:1;   transform:translateY(-190px) scale(1); filter:drop-shadow(0 0 14px rgba(147,197,253,.5)); }
+  }
+
+  /* o texto entra junto com a subida do raio */
+  .slide.hero-late.is-active .slide-content > *:nth-child(1){ animation-delay:3.15s; }
+  .slide.hero-late.is-active .slide-content > *:nth-child(2){ animation-delay:3.3s; }
+  .slide.hero-late.is-active .slide-content > *:nth-child(3){ animation-delay:3.45s; }
+  .greeting{
+    font-family:var(--font-head); font-weight:700; font-size:19px; line-height:1.2;
+    color:rgba(255,255,255,.82); margin-bottom:8px;
+  }
+  /* os boxes só entram quando a contagem do número termina
+     (classe repetida para vencer a regra genérica de stagger, que vem depois no arquivo) */
+  .slide.is-active .slide-content > .piggy-box.piggy-box,
+  .slide.is-active .slide-content > .map-box.map-box{ animation-delay:1.4s; }
+
+  .slide-content{
+    position:absolute; inset:0; z-index:2;
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    padding:0 36px; text-align:center;
+  }
+  /* economia, CO₂ e fatura fechada: o hero ancorado na mesma altura nas três
+     telas (o centralizado flutuava conforme a altura do bloco secundário) e o
+     secundário empurrado para o rodapé pela margem automática do hero */
+  .slide.hero-anchor .slide-content{
+    justify-content:flex-start; padding:27dvh 36px 88px;
+    transition:padding-top .5s cubic-bezier(.4,0,.2,1);
+  }
+  .slide.hero-anchor .slide-content > .sentence-num{ margin-bottom:auto; }
+  /* tela final: mesmo enquadramento, mas quem empurra as ações é o parágrafo */
+  .slide.end-slide .slide-content{ justify-content:flex-start; padding:27dvh 36px 88px; }
+  .slide.end-slide .slide-content > *{ flex-shrink:0; }
+  .slide.end-slide .slide-content > .sub{ margin-bottom:auto; }
+  /* sem encolher: em flex o hero seria comprimido abaixo do conteúdo e o
+     texto passaria por baixo do bloco de baixo em vez de empurrá-lo */
+  .slide.hero-anchor .slide-content > *{ flex-shrink:0; }
+  /* com o QR aberto nada cabe: o hero sobe e os selos saem de cena, liberando
+     a altura do código. height !important porque o JS mede a altura em linha */
+  .slide.hero-anchor.qr-open .slide-content{ padding-top:12dvh; }
+  /* !important nos dois: a altura porque o JS mede em linha, e a opacidade
+     porque o revealUp fica preso em opacity:1 com fill forwards */
+  .slide.qr-open .deduct-area{ height:0 !important; opacity:0 !important; pointer-events:none; }
+
+  .slide-content > *{opacity:0; transform:translateY(20px) scale(.97); filter:blur(6px);}
+  .slide.is-active .slide-content > *{ animation:revealUp .7s cubic-bezier(.22,.85,.32,1.15) forwards; }
+  .slide.is-active .slide-content > *:nth-child(1){animation-delay:.10s;}
+  .slide.is-active .slide-content > *:nth-child(2){animation-delay:.22s;}
+  .slide.is-active .slide-content > *:nth-child(3){animation-delay:.36s;}
+  .slide.is-active .slide-content > *:nth-child(4){animation-delay:.50s;}
+  @keyframes revealUp{60%{filter:blur(0);} to{opacity:1; transform:translateY(0) scale(1); filter:blur(0);}}
+  @keyframes numPop{0%{transform:scale(1);}45%{transform:scale(1.08);}100%{transform:scale(1);}}
+  .cu{display:inline-block; font-variant-numeric:tabular-nums;}
+  .cu.pop{animation:numPop .5s cubic-bezier(.34,1.6,.64,1);}
+
+  h1.headline{ font-family:var(--font-head); font-weight:700; font-size:clamp(24px,7vw,30px); line-height:1.2; margin:0; text-wrap:balance; }
+  h1.headline.lg{font-weight:700; font-size:clamp(22px,6.4vw,26px);}
+  p.sub{font-size:16px; line-height:1.5; color:rgba(255,255,255,.88); max-width:320px; margin:14px 0 0; text-wrap:pretty;}
+
+  /* ===== árvores brotando (uma por unidade contabilizada) ===== */
+  /* revealUp termina em filter:blur(0), e um filtro — mesmo zerado — recorta o que
+     o elemento desenha fora da própria caixa. O padding é a folga que a sombra
+     (e o overshoot do growTree) ocupam; a margem negativa devolve o espaçamento. */
+  .trees-box{
+    margin-top:22px; width:100%; max-width:300px;
+    background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); border-radius:18px;
+    padding:2px 12px; display:flex; justify-content:center;
+  }
+  .trees{
+    display:flex; align-items:flex-end; justify-content:center; gap:2px;
+    padding:16px 24px 22px;
+  }
+  .tree{
+    font-size:58px; line-height:1; color:#fff; display:block;
+    transform-origin:bottom center; transform:scale(.05,.02); opacity:0;
+    filter:drop-shadow(0 6px 14px rgba(0,0,0,.35));
+  }
+  .slide.is-active .tree{ animation:growTree 1s cubic-bezier(.25,.9,.3,1) both; }
+  @keyframes growTree{
+    0%{ opacity:0; transform:scale(.05,.02); }
+    30%{ opacity:1; }
+    62%{ transform:scale(1.1,1.14); }
+    80%{ transform:scale(.96,.97); }
+    100%{ opacity:1; transform:scale(1,1); }
+  }
+
+  /* sentence-wrapped hero number: "text / BIG NUMBER / text" */
+  .sentence-num{display:flex; flex-direction:column; align-items:center; text-align:center;}
+  .sentence-num .lead, .sentence-num .tail{ font-family:var(--font-head); font-weight:700; font-size:20px; line-height:1.25; text-wrap:balance; }
+  .sentence-num .num{ font-family:var(--font-head); font-weight:800; font-size:clamp(38px,11.5vw,52px); letter-spacing:-1px; margin:2px 0; }
+
+  /* ===== vertical bar chart (Contexto slide) ===== */
+  .bar-chart{display:flex; align-items:flex-end; justify-content:center; gap:28px; margin-top:30px; height:330px;}
+  .bar-col{display:flex; flex-direction:column; align-items:center; width:112px; height:100%; justify-content:flex-end;}
+  .bar-track{width:100%; height:260px; border-radius:18px; background:rgba(255,255,255,.08); display:flex; align-items:flex-end; overflow:hidden;}
+  .bar-fill{width:100%; height:0%; border-radius:18px; transition:height 1s cubic-bezier(.22,.85,.2,1);}
+  .bar-info{margin-top:12px; display:flex; flex-direction:column; align-items:center; gap:5px; width:100%;}
+  .bar-info .msr{font-size:20px;}
+  .bar-label{
+    font-family:var(--font-head); font-weight:700; font-size:11px; letter-spacing:.4px; text-transform:uppercase;
+    color:rgba(255,255,255,.75); text-align:center; line-height:1.3;
+    min-height:2.6em; display:flex; align-items:center; justify-content:center;
+  }
+  .bar-value{font-family:var(--font-head); font-weight:700; font-size:21px; color:#fff;}
+  .bar-value small{font-size:13px; font-weight:600; opacity:.85;}
+  /* stacked bar (crédito do mês + saldo usado) */
+  .bar-track.stacked{ flex-direction:column; justify-content:flex-end; }
+  .bar-fill.stack-top{ border-radius:18px 18px 0 0; }
+  .bar-fill.stack-bottom{ border-radius:0 0 18px 18px; }
+  .bar-legend{ display:flex; flex-direction:column; gap:6px; margin-top:16px; align-items:center; }
+  .bar-legend .li{ display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:rgba(255,255,255,.85); }
+  .bar-legend .sw{ width:10px; height:10px; border-radius:3px; flex:none; }
+  .ctx-variant{ display:none; width:100%; flex-direction:column; align-items:center; }
+  .ctx-variant.on{ display:flex; }
+
+  /* ===== accumulated / trophy-style card ===== */
+  /* ===== piggy bank that fills up (Desconto slide) ===== */
+  .piggy-box{
+    margin-top:26px; width:100%; max-width:270px;
+    background:rgba(27,48,3,.07); border:1px solid rgba(27,48,3,.12); border-radius:18px;
+    padding:14px 16px; display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .piggy-lbl{
+    font-family:var(--font-head); font-weight:700; font-size:10.5px; letter-spacing:.4px; text-transform:uppercase;
+    color:rgba(27,48,3,.5); line-height:1.3; text-align:center; text-wrap:balance;
+  }
+  /* porquinho e valor lado a lado, mesma altura, enchendo juntos */
+  .piggy-row{ display:flex; align-items:center; justify-content:center; gap:11px; }
+  .piggy-row .msr{
+    font-size:38px; line-height:1;
+    font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 48;
+  }
+  .piggy-amount{ font-family:var(--font-head); font-weight:800; font-size:30px; line-height:1; white-space:nowrap; }
+  .piggy-row .msr, .piggy-row .piggy-amount{
+    background-image:linear-gradient(to top, #1b3003 49.4%, #6aa80f 49.4%, #6aa80f 50%, rgba(27,48,3,.20) 50%);
+    background-size:100% 220%;
+    background-position:0% 0%;
+    -webkit-background-clip:text; background-clip:text;
+    color:transparent;
+    transition:background-position 1.5s cubic-bezier(.3,.8,.3,1);
+  }
+  .piggy-row.filled .msr, .piggy-row.filled .piggy-amount{ background-position:0% 100%; }
+  /* o "pop" precisa acontecer na linha inteira: escalar o span interno quebraria o background-clip */
+  .piggy-row.pop{ animation:numPop .5s cubic-bezier(.34,1.6,.64,1); }
+  .piggy-row.pop .cu{ animation:none; }
+
+  .stat-card{ margin-top:22px; border-radius:14px; padding:18px 20px; width:100%; max-width:300px; }
+  .stat-card .row{display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px;}
+  .stat-card .row .msr{font-size:16px;}
+  .stat-card .lbl{font-family:var(--font-head); font-weight:700; font-size:12.5px; letter-spacing:.4px; text-transform:uppercase; line-height:1.4;}
+  .stat-card .val-row{display:flex; align-items:center; justify-content:center; gap:8px;}
+  .stat-card .val-row .msr{font-size:22px;}
+  .stat-card .val{font-family:var(--font-head); font-weight:700; font-size:26px;}
+
+  /* ===== deductions that tick the total down ===== */
+  /* área com duas instâncias sobrepostas: vertical (durante os abatimentos) e horizontal (depois) */
+  .deduct-area{
+    position:relative; width:100%; max-width:290px; margin-top:20px; height:0;
+    transition:height .85s cubic-bezier(.4,0,.2,1), opacity .5s ease;
+  }
+  .deduct-list, .deduct-icons{
+    position:absolute; bottom:0; left:0; right:0; display:flex;
+    transition:opacity .9s ease;
+  }
+  .deduct-list{ flex-direction:column-reverse; align-items:stretch; gap:8px; }
+  .deduct-icons{ flex-direction:row; justify-content:center; align-items:center; gap:10px; opacity:0; pointer-events:none; }
+  .deduct-area.icons .deduct-list{ opacity:0; pointer-events:none; }
+  .deduct-area.icons .deduct-icons{ opacity:1; pointer-events:auto; }
+  .deduct{
+    display:flex; align-items:center; gap:9px; padding:9px 14px; border-radius:999px;
+    background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.16);
+    font-size:13px; font-weight:600; color:#eff6ff; opacity:0; transform:translateY(10px);
+    transition:padding .45s cubic-bezier(.4,0,.2,1), gap .45s cubic-bezier(.4,0,.2,1), background .3s ease, transform .25s ease;
+  }
+  .deduct .msr{ font-size:17px; opacity:.9; flex:none; }
+  .deduct-body{ display:flex; align-items:center; gap:9px; flex:1; max-width:240px; overflow:hidden; white-space:nowrap; transition:max-width .45s cubic-bezier(.4,0,.2,1), opacity .3s ease, gap .45s ease; }
+  .deduct .lbl{ flex:1; text-align:left; }
+  .deduct b{ font-family:var(--font-head); font-weight:800; color:#a7f3d0; }
+  /* "tchan" verde no momento em que o desconto entra */
+  .deduct.in{ animation:deductPop 1s cubic-bezier(.3,.9,.35,1.2) forwards; }
+  @keyframes deductPop{
+    0%{ opacity:0; transform:translateY(10px) scale(.96); background:rgba(74,222,128,.38); border-color:rgba(74,222,128,.75); box-shadow:0 0 0 0 rgba(74,222,128,0); }
+    35%{ opacity:1; transform:translateY(0) scale(1.05); background:rgba(74,222,128,.32); border-color:rgba(74,222,128,.7); box-shadow:0 0 24px 5px rgba(74,222,128,.45); }
+    70%{ transform:translateY(0) scale(1); box-shadow:0 0 12px 2px rgba(74,222,128,.18); }
+    100%{ opacity:1; transform:translateY(0) scale(1); background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.16); box-shadow:0 0 0 0 rgba(74,222,128,0); }
+  }
+  /* instância horizontal: só ícones, expandindo no hover */
+  .deduct-icons .deduct{ opacity:1; transform:none; padding:12px; gap:0; cursor:pointer; }
+  .deduct-icons .deduct .deduct-body{ max-width:0; opacity:0; gap:0; }
+  .deduct-icons .deduct:hover, .deduct-icons .deduct:focus-within{ padding:9px 14px; gap:9px; background:rgba(255,255,255,.18); }
+  .deduct-icons .deduct:hover .deduct-body, .deduct-icons .deduct:focus-within .deduct-body{ max-width:240px; opacity:1; gap:9px; }
+  /* o texto abaixo do valor só entra quando os descontos terminam */
+  .sentence-num .tail.late{ opacity:0; transform:translateY(6px); transition:opacity .9s ease, transform .9s cubic-bezier(.3,.9,.35,1.1); }
+  .sentence-num .tail.late.on{ opacity:1; transform:translateY(0); }
+  /* o valor pisca em verde a cada abatimento */
+  @keyframes numFlash{ 0%{ color:#86efac; } 100%{ color:#eff6ff; } }
+  .num.flash{ animation:numFlash 1s ease-out; }
+  .slide.is-active .slide-content > .deduct-list{ animation:none; opacity:1; transform:none; filter:none; }
+  .sentence-num .lead{ transition:opacity .9s ease; }
+
+  /* ===== payment buttons ===== */
+  .pay-actions{display:flex; flex-direction:column; align-items:center; gap:14px; margin-top:30px;}
+  /* os botões não entram pelo stagger: crescem no espaço que os descontos
+     liberam ao virar badges, então a altura entra junto com o colapso */
+  .slide.is-active .slide-content > .pay-actions{
+    animation:none; transform:none; filter:none;
+    height:0; opacity:0; margin-top:0; overflow:hidden;
+    transition:height .9s cubic-bezier(.4,0,.2,1), opacity .9s ease, margin-top .9s cubic-bezier(.4,0,.2,1);
+  }
+  .slide.is-active .slide-content > .pay-actions.on{ opacity:1; margin-top:26px; }
+  .btn-pill{
+    display:inline-flex; align-items:center; gap:10px; padding:15px 26px; border-radius:99px;
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); backdrop-filter:blur(8px);
+    font-family:var(--font-body); font-weight:700; font-size:14px; color:#eff6ff;
+    transition:transform .15s ease, background .2s ease;
+  }
+  .btn-pill:active{transform:scale(.96); background:rgba(255,255,255,.24);}
+  .btn-pill .msr{font-size:19px;}
+  .btn-pill.copied{background:#4ade80; color:#0b3b1e;}
+  .qr-wrap{max-height:0; overflow:hidden; transition:max-height .4s ease; margin-top:6px;}
+  .qr-wrap.open{max-height:220px;}
+  .qr-box{width:160px; height:160px; background:#fff; border-radius:14px; padding:10px; margin:10px auto 0;}
+  .qr-box svg{width:100%; height:100%;}
+
+  /* ===== bottom nav: chevrons + chromeless shortcut ===== */
+  .bottom-nav{ position:absolute; left:44px; right:44px; bottom:calc(env(safe-area-inset-bottom,0px) + 22px); z-index:20; display:flex; align-items:center; justify-content:space-between; }
+  .nav-chevron{ flex:none; width:36px; height:36px; border-radius:50%; border:1px solid rgba(255,255,255,.4); display:flex; align-items:center; justify-content:center; color:#fff; transition:background .2s, transform .15s; }
+  .nav-chevron:active{transform:scale(.9); background:rgba(255,255,255,.14);}
+  .nav-chevron .mss{font-size:16px;}
+  .nav-chevron.hidden{visibility:hidden;}
+  .nav-mid{
+    flex:none; display:flex; align-items:center; gap:5px; height:36px; padding:0 4px;
+    background:none; border:none; color:rgba(255,255,255,.82);
+    font-family:var(--font-body); font-weight:700; font-size:12.5px; letter-spacing:.1px;
+    transition:opacity .15s ease, transform .15s ease;
+  }
+  .nav-mid .msr{font-size:16px;}
+  .nav-mid:active{transform:scale(.95); opacity:.7;}
+
+  .end-actions{ display:flex; flex-direction:column; align-items:center; gap:12px; margin-top:26px; }
+  .btn-replay{
+    margin-top:4px; background:none; border:none; color:rgba(255,255,255,.75);
+    padding:8px 14px; border-radius:99px; font-weight:700; font-size:13px;
+    display:inline-flex; align-items:center; gap:7px; width:fit-content;
+    transition:color .2s ease, transform .15s ease;
+  }
+  .btn-replay:active{ transform:scale(.95); color:#fff; }
+  .sparkle{position:absolute; color:#fff; opacity:0; animation:twinkle 2.4s ease-in-out infinite;}
+  .sparkle svg{ width:1em; height:1em; display:block; fill:currentColor; }
+  @keyframes twinkle{0%,100%{opacity:0; transform:scale(.4) rotate(0deg);} 50%{opacity:1; transform:scale(1) rotate(20deg);}}
+
+  /* ===== fun-fact slides: warm analog-photo backdrop ===== */
+  .photo-vignette{position:absolute; inset:0; background:radial-gradient(120% 90% at 50% 38%, transparent 35%, rgba(0,0,0,.5) 100%); pointer-events:none;}
+  .photo-leak{position:absolute; inset:-25%; background:linear-gradient(115deg, rgba(255,205,140,.35) 0%, transparent 32%, transparent 68%, rgba(255,110,90,.28) 100%); mix-blend-mode:screen; pointer-events:none;}
+  .photo-bokeh{position:absolute; border-radius:50%; filter:blur(34px); opacity:.4; mix-blend-mode:screen;}
+  .photo-grain{position:absolute; inset:0; opacity:.14; mix-blend-mode:overlay; background-image:radial-gradient(rgba(255,255,255,.9) 1px, transparent 1px); background-size:2.4px 2.4px;}
+  /* céu de golden hour que nasce conforme o CO₂ evitado sobe */
+  .golden-hour{
+    position:absolute; inset:0; opacity:0; transition:opacity 2.4s ease;
+    background:
+      radial-gradient(62% 40% at 50% 92%, rgba(255,220,160,.95) 0%, rgba(255,166,92,.4) 45%, rgba(255,140,80,0) 74%),
+      linear-gradient(180deg, #2a1b3a 0%, #6d3557 32%, #c4603f 62%, #f0954f 84%, #ffc884 100%);
+  }
+  .golden-hour.on{ opacity:1; }
+
+  /* ===== mapa minimalista com a rota se desenhando ===== */
+  .map-box{
+    margin-top:22px; width:100%; max-width:300px;
+    background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); border-radius:18px;
+    padding:12px 14px 14px; display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .map-lbl{
+    font-family:var(--font-head); font-weight:700; font-size:10.5px; letter-spacing:.4px; text-transform:uppercase;
+    color:rgba(255,255,255,.62); text-align:center; line-height:1.35; text-wrap:balance;
+  }
+  /* tamanho fixo: os rótulos são posicionados nas mesmas coordenadas do viewBox */
+  .map{ position:relative; width:268px; height:76px; }
+  .map-svg{ width:268px; height:76px; display:block; overflow:visible; }
+  .route-bg{ fill:none; stroke:rgba(255,255,255,.28); stroke-width:2; stroke-dasharray:3 7; stroke-linecap:round; }
+  /* pathLength=1 normaliza o traçado, então o dasharray independe do comprimento real */
+  .route-fg{ fill:none; stroke:#fff; stroke-width:2.5; stroke-linecap:round; stroke-dasharray:1; stroke-dashoffset:1; }
+  .slide.is-active .route-fg{ animation:drawRoute 2.4s cubic-bezier(.35,0,.25,1) 1.75s forwards; }
+  @keyframes drawRoute{ to{ stroke-dashoffset:0; } }
+  /* ponto luminoso na ponta do traçado. dashoffset e offset-distance são ambos
+     parametrizados por comprimento de arco, então mesma duração + mesma easing
+     mantêm o ponto exatamente na ponta da linha o tempo todo */
+  .route-dot{
+    position:absolute; left:0; top:0; width:9px; height:9px; border-radius:50%;
+    background:#fff; opacity:0;
+    box-shadow:0 0 8px 2px rgba(255,255,255,.85), 0 0 18px 6px rgba(191,219,254,.45);
+    offset-path:path("M24 48 C 90 0, 178 0, 244 48");
+    offset-anchor:50% 50%; offset-distance:0%;
+  }
+  .slide.is-active .route-dot{ animation:routeDot 2.4s cubic-bezier(.35,0,.25,1) 1.75s forwards; }
+  @keyframes routeDot{
+    0%  { opacity:0; offset-distance:0%; }
+    5%  { opacity:1; }
+    88% { opacity:1; }
+    100%{ opacity:0; offset-distance:100%; }   /* dissolve dentro do pino de destino */
+  }
+  .map-pin{ fill:#fff; }
+  .map-pin-ring{ fill:none; stroke:rgba(255,255,255,.45); stroke-width:1.5; }
+  /* origem e destino na mesma linha, ancorados nas bordas: centrar cada rótulo
+     no seu pino jogaria "Belo Horizonte" para fora da caixa */
+  .map-city{
+    position:absolute; top:60px; font-family:var(--font-head); font-weight:700; font-size:10.5px;
+    letter-spacing:.3px; color:rgba(255,255,255,.85); white-space:nowrap;
+  }
+  .map-city.from{ left:0; }
+  .map-city.to{ right:0; }
+  .map-dist{
+    font-family:var(--font-head); font-weight:800; font-size:18px; line-height:1.2;
+    color:#fff; white-space:nowrap;
+  }
+
+  /* ar poluído que vai limpando conforme o CO₂ evitado sobe */
+  .smog{
+    position:absolute; inset:0; z-index:1; pointer-events:none; opacity:1;
+    background:radial-gradient(120% 90% at 50% 45%, rgba(138,128,110,.72), rgba(42,36,30,.95));
+    backdrop-filter:grayscale(1) blur(5px); -webkit-backdrop-filter:grayscale(1) blur(5px);
+    transition:opacity 2.2s ease;
+  }
+  .smog.cleared{ opacity:0; }
+
+  /* ===== ripple ===== */
+  .ripple{ position:absolute; z-index:15; pointer-events:none; width:16px; height:16px; margin:-8px 0 0 -8px; border-radius:50%; background:radial-gradient(circle, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 70%); animation:rippleOut .6s ease-out forwards; }
+  @keyframes rippleOut{0%{transform:scale(0); opacity:.9;} 100%{transform:scale(9); opacity:0;}}
+
+  /* ===== confetti ===== */
+  .confetti-layer{position:absolute; inset:0; z-index:1; pointer-events:none; overflow:hidden;}
+  /* queda contínua (outer) + flutuação/giro próprio (inner) */
+  .confetto{ position:absolute; top:-14%; will-change:transform; animation:confFall linear forwards; }
+  .confetto .flake{ width:100%; height:100%; will-change:transform; animation:confFlutter ease-in-out infinite alternate; }
+  @keyframes confFall{ from{ transform:translateY(0); } to{ transform:translateY(122vh); } }
+  @keyframes confFlutter{
+    0%{ transform:translateX(calc(var(--drift) * -1)) rotate3d(1,.6,.2,0deg); }
+    100%{ transform:translateX(var(--drift)) rotate3d(1,.6,.2,320deg); }
+  }
+
+  /* ===== tap zones ===== */
+  .tap-zone{position:absolute; top:0; bottom:0; pointer-events:none;}
+  .tap-left{left:0; width:32%;}
+  .tap-right{left:32%; right:0;}
+</style>
+
+
+<div class="stage" id="stage">
+  <div class="top-controls">
+    <button class="icon-btn" id="btnPause" aria-label="Pausar"><span class="mss" id="pauseIcon">pause</span></button>
+    <img class="brand-logo" src="data:image/png;base64,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" alt="COGECOM">
+    <button class="icon-btn" id="btnSkip" aria-label="Pular para pagamento"><span class="mss">close</span></button>
+  </div>
+  <div class="progress-row" id="progressRow"></div>
+
+  <div class="slides" id="slides">
+
+    <!-- 1. SAUDAÇÃO -->
+    <section class="slide hero-late" data-duration="8500" data-theme="blue">
+      <div class="slide-bg">
+        <div class="hero-blob" style="width:280px;height:280px;background:#3b82f6;top:-70px;left:-70px;animation:floatA 9s ease-in-out infinite;"></div>
+        <div class="hero-blob" style="width:220px;height:220px;background:#818cf8;bottom:20px;right:-60px;animation:floatB 11s ease-in-out infinite;"></div>
+        <div class="paper-stage">
+          <div class="paper-doc">
+            <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+              <linearGradient id="billPaper" x1="0" y1="0" x2="0.4" y2="1">
+                <stop offset="0" stop-color="#fdfbf6"/><stop offset="1" stop-color="#e7e3d7"/>
+              </linearGradient>
+              <pattern id="billBars" width="9" height="30" patternUnits="userSpaceOnUse">
+                <rect x="0" y="0" width="2" height="30" fill="#1c1917"/>
+                <rect x="4" y="0" width="1" height="30" fill="#1c1917"/>
+                <rect x="6.5" y="0" width="1.6" height="30" fill="#1c1917"/>
+              </pattern>
+              <g id="billDoc">
+                <rect width="236" height="318" rx="5" fill="url(#billPaper)"/>
+                <path d="M0 5a5 5 0 0 1 5-5h226a5 5 0 0 1 5 5v31H0z" fill="#22345f"/>
+                <rect x="13" y="13" width="38" height="10" rx="2" fill="#fff" opacity=".92"/>
+                <rect x="59" y="16" width="118" height="4" rx="2" fill="#fff" opacity=".3"/>
+                <rect x="13" y="50" width="193" height="4" rx="2" fill="#1c1917" opacity=".15"/>
+                <rect x="13" y="62" width="132" height="4" rx="2" fill="#1c1917" opacity=".15"/>
+                <rect x="13" y="82" width="46" height="3" rx="1.5" fill="#1c1917" opacity=".12"/>
+                <rect x="13" y="90" width="72" height="6" rx="2" fill="#1c1917" opacity=".24"/>
+                <rect x="126" y="82" width="46" height="3" rx="1.5" fill="#1c1917" opacity=".12"/>
+                <rect x="126" y="90" width="80" height="6" rx="2" fill="#1c1917" opacity=".24"/>
+                <rect x="13" y="108" width="46" height="3" rx="1.5" fill="#1c1917" opacity=".12"/>
+                <rect x="13" y="116" width="64" height="6" rx="2" fill="#1c1917" opacity=".24"/>
+                <rect x="126" y="108" width="46" height="3" rx="1.5" fill="#1c1917" opacity=".12"/>
+                <rect x="126" y="116" width="76" height="6" rx="2" fill="#1c1917" opacity=".24"/>
+                <rect x="13" y="140" width="210" height="52" rx="5" fill="#1c1917" opacity=".03" stroke="#1c1917" stroke-opacity=".14"/>
+                <rect x="24" y="152" width="72" height="3" rx="1.5" fill="#1c1917" opacity=".16"/>
+                <rect x="24" y="163" width="122" height="12" rx="3" fill="#1c1917" opacity=".32"/>
+                <rect x="13" y="206" width="168" height="4" rx="2" fill="#1c1917" opacity=".15"/>
+                <rect x="13" y="218" width="204" height="4" rx="2" fill="#1c1917" opacity=".15"/>
+                <rect x="13" y="230" width="104" height="4" rx="2" fill="#1c1917" opacity=".15"/>
+                <rect x="13" y="252" width="210" height="30" fill="url(#billBars)" opacity=".72"/>
+                <rect x="13" y="292" width="126" height="4" rx="2" fill="#1c1917" opacity=".12"/>
+              </g>
+            </defs></svg>
+
+            <div class="p-intact"><svg class="doc-svg" viewBox="0 0 236 318"><use href="#billDoc"/></svg></div>
+            <div class="scan-beam"></div>
+          </div>
+        </div>
+        <div class="dust-layer"></div>
+        <div class="digital-spark"><span class="msr">bolt</span></div>
+        <div class="grain" style="z-index:4;"></div>
+      </div>
+      <div class="slide-content">
+        <div class="greeting">Oi, Thiago!</div>
+        <h1 class="headline" style="font-size:clamp(26px,7.6vw,32px); font-weight:700;">Ler fatura gigante é coisa do passado.</h1>
+        <p class="sub">Sua conta de novembro cabe em 30 segundos. Veja o que a sua energia fez por você.</p>
+      </div>
+      <div class="bottom-nav">
+        <div class="nav-chevron hidden"><span class="mss">chevron_left</span></div>
+        <button class="nav-mid" data-goto="3"><span class="msr">savings</span>Ir para economia</button>
+        <div class="nav-chevron" data-next><span class="mss">chevron_right</span></div>
+      </div>
+    </section>
+
+    <!-- 2. CONTEXTO (gráfico animado) -->
+    <section class="slide" data-duration="7000" data-theme="blue">
+      <div class="slide-bg"><div class="grain"></div></div>
+      <div class="slide-content">
+        <!-- variante A: crédito do mês cobre tudo -->
+        <div class="ctx-variant on" data-variant="full">
+          <h1 class="headline lg">Seu consumo foi 100% coberto por energia limpa e&nbsp;renovável!</h1>
+          <div class="bar-chart">
+            <div class="bar-col">
+              <div class="bar-track"><div class="bar-fill" data-bar="consumo" style="background:linear-gradient(180deg,#3b82f6,#2563eb);"></div></div>
+              <div class="bar-info">
+                <span class="msr" style="color:#60a5fa;">bolt</span>
+                <div class="bar-label">Consumo</div>
+                <div class="bar-value"><span class="cu cu-bar" data-count="296" data-dec="0">0</span><small> kWh</small></div>
+              </div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-track"><div class="bar-fill" data-bar="credito" style="background:linear-gradient(180deg,#baf743,#8bd40e);"></div></div>
+              <div class="bar-info">
+                <span class="msr" style="color:#a3e635;">energy_savings_leaf</span>
+                <div class="bar-label">Crédito recebido</div>
+                <div class="bar-value"><span class="cu cu-bar" data-count="310" data-dec="0">0</span><small> kWh</small></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- variante B: crédito do mês + saldo acumulado -->
+        <div class="ctx-variant" data-variant="saldo">
+          <h1 class="headline lg">Seu consumo foi 100% coberto por energia limpa e&nbsp;renovável!</h1>
+          <div class="bar-chart">
+            <div class="bar-col">
+              <div class="bar-track"><div class="bar-fill" data-bar="consumo" style="background:linear-gradient(180deg,#3b82f6,#2563eb);"></div></div>
+              <div class="bar-info">
+                <span class="msr" style="color:#60a5fa;">bolt</span>
+                <div class="bar-label">Consumo</div>
+                <div class="bar-value"><span class="cu cu-bar" data-count="296" data-dec="0">0</span><small> kWh</small></div>
+              </div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-track stacked">
+                <div class="bar-fill stack-top" data-bar="saldo" style="background:linear-gradient(180deg,#fde68a,#f2c33c);"></div>
+                <div class="bar-fill stack-bottom" data-bar="credito" style="background:linear-gradient(180deg,#baf743,#8bd40e);"></div>
+              </div>
+              <div class="bar-info">
+                <span class="msr" style="color:#a3e635;">energy_savings_leaf</span>
+                <div class="bar-label">Crédito + saldo</div>
+                <div class="bar-value"><span class="cu cu-bar" data-count="296" data-dec="0">0</span><small> kWh</small></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- variante C: sem saldo, e o crédito não cobriu o consumo inteiro -->
+        <div class="ctx-variant" data-variant="parcial">
+          <h1 class="headline lg"><span class="cu cu-bar ctx-pct" data-dec="0">0</span>% do seu consumo veio de energia limpa e&nbsp;renovável.</h1>
+          <div class="bar-chart">
+            <div class="bar-col">
+              <div class="bar-track"><div class="bar-fill" data-bar="consumo" style="background:linear-gradient(180deg,#3b82f6,#2563eb);"></div></div>
+              <div class="bar-info">
+                <span class="msr" style="color:#60a5fa;">bolt</span>
+                <div class="bar-label">Consumo</div>
+                <div class="bar-value"><span class="cu cu-bar" data-count="296" data-dec="0">0</span><small> kWh</small></div>
+              </div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-track"><div class="bar-fill" data-bar="credito" style="background:linear-gradient(180deg,#baf743,#8bd40e);"></div></div>
+              <div class="bar-info">
+                <span class="msr" style="color:#a3e635;">energy_savings_leaf</span>
+                <div class="bar-label">Crédito recebido</div>
+                <div class="bar-value"><span class="cu cu-bar" data-count="237" data-dec="0">0</span><small> kWh</small></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-nav">
+        <div class="nav-chevron" data-prev><span class="mss">chevron_left</span></div>
+        <button class="nav-mid" data-goto="3"><span class="msr">savings</span>Ir para economia</button>
+        <div class="nav-chevron" data-next><span class="mss">chevron_right</span></div>
+      </div>
+    </section>
+
+    <!-- 3. FUN FACT — árvores -->
+    <section class="slide hero-anchor" data-duration="6600" data-theme="teal">
+      <div class="slide-bg">
+        <div class="photo-bokeh" style="width:200px;height:200px;background:#f5d08a;top:12%;right:-6%;"></div>
+        <div class="photo-bokeh" style="width:130px;height:130px;background:#a3c46a;bottom:18%;left:-4%;opacity:.3;"></div>
+        <div class="photo-leak"></div>
+        <div class="photo-vignette"></div>
+        <div class="photo-grain"></div>
+      </div>
+      <div class="slide-content">
+        <div class="sentence-num">
+          <span class="lead">Em novembro sua energia poupou o carbono que</span>
+          <span class="num">2 árvores</span>
+          <span class="tail">absorvem em um ano.</span>
+        </div>
+        <div class="trees-box">
+          <div class="trees" data-count="2"></div>
+        </div>
+      </div>
+      <div class="bottom-nav">
+        <div class="nav-chevron" data-prev><span class="mss">chevron_left</span></div>
+        <button class="nav-mid" data-goto="3"><span class="msr">savings</span>Ir para economia</button>
+        <div class="nav-chevron" data-next><span class="mss">chevron_right</span></div>
+      </div>
+    </section>
+
+    <!-- 4. DESCONTO -->
+    <section class="slide hero-anchor" data-duration="7600" data-theme="lime">
+      <div class="slide-bg">
+        <div class="photo-bokeh" style="width:210px;height:210px;background:#f2ffb8;top:10%;left:-8%;opacity:.45;"></div>
+        <div class="photo-bokeh" style="width:150px;height:150px;background:#d9f77a;bottom:12%;right:-6%;opacity:.3;"></div>
+        <div class="photo-leak"></div>
+        <div class="photo-vignette" style="background:radial-gradient(120% 90% at 50% 40%, transparent 42%, rgba(40,60,4,.32) 100%);"></div>
+        <div class="photo-grain"></div>
+      </div>
+      <div class="confetti-layer" id="confettiLayer"></div>
+      <div class="slide-content">
+        <div class="sentence-num">
+          <span class="lead" style="color:#42651f;">Neste mês sua conta veio</span>
+          <span class="num" style="color:#1b3003;">R$ <span class="cu" data-count="43.50" data-dec="2">0,00</span></span>
+          <span class="tail" style="color:#42651f;">mais barata!</span>
+        </div>
+        <div class="piggy-box">
+          <div class="piggy-row" id="piggy">
+            <span class="msr">savings</span>
+            <span class="piggy-amount">R$ <span class="cu cu-piggy" data-count="287.00" data-dec="2">0,00</span></span>
+          </div>
+          <div class="piggy-lbl">Desconto acumulado até o momento</div>
+        </div>
+      </div>
+      <div class="bottom-nav">
+        <div class="nav-chevron" data-prev><span class="mss">chevron_left</span></div>
+        <button class="nav-mid" data-goto="5"><span class="msr">payments</span>Pagar fatura</button>
+        <div class="nav-chevron" data-next><span class="mss">chevron_right</span></div>
+      </div>
+    </section>
+
+    <!-- 5. FUN FACT — CO2 acumulado -->
+    <section class="slide hero-anchor" data-duration="8200" data-theme="amber">
+      <div class="slide-bg">
+        <div class="golden-hour" id="goldenHour"></div>
+        <div class="photo-bokeh" style="width:220px;height:220px;background:#ffb27a;top:16%;left:-8%;"></div>
+        <div class="photo-bokeh" style="width:140px;height:140px;background:#ffd9a0;bottom:14%;right:-5%;opacity:.32;"></div>
+        <div class="photo-leak"></div>
+        <div class="photo-vignette"></div>
+        <div class="photo-grain"></div>
+        <div class="smog" id="smog"></div>
+      </div>
+      <div class="slide-content">
+        <div class="sentence-num">
+          <span class="lead">Como cooperado, você já deixou de emitir</span>
+          <span class="num"><span class="cu" data-count="94" data-dec="0">0</span> kg</span>
+          <span class="tail">de CO₂ na atmosfera.</span>
+        </div>
+        <div class="map-box">
+          <div class="map-lbl">O mesmo que um carro emitiria numa viagem dessa distância</div>
+          <div class="map">
+            <svg class="map-svg" viewBox="0 0 268 76" aria-hidden="true">
+              <path class="route-bg" d="M24 48 C 90 0, 178 0, 244 48"/>
+              <path class="route-fg" pathLength="1" d="M24 48 C 90 0, 178 0, 244 48"/>
+              <circle class="map-pin-ring" cx="24" cy="48" r="7"/>
+              <circle class="map-pin" cx="24" cy="48" r="3.5"/>
+              <circle class="map-pin-ring" cx="244" cy="48" r="7"/>
+              <circle class="map-pin" cx="244" cy="48" r="3.5"/>
+            </svg>
+            <div class="route-dot"></div>
+            <span class="map-city from">São Paulo</span>
+            <span class="map-city to">Belo Horizonte</span>
+          </div>
+          <div class="map-dist"><span class="cu cu-map" data-count="600" data-dec="0">0</span> km</div>
+        </div>
+      </div>
+      <div class="bottom-nav">
+        <div class="nav-chevron" data-prev><span class="mss">chevron_left</span></div>
+        <button class="nav-mid" data-goto="5"><span class="msr">payments</span>Pagar fatura</button>
+        <div class="nav-chevron" data-next><span class="mss">chevron_right</span></div>
+      </div>
+    </section>
+
+    <!-- 6. VALOR A PAGAR + PAGAMENTO -->
+    <section class="slide hero-anchor" data-duration="0" data-theme="blue">
+      <div class="slide-bg"><div class="grain"></div></div>
+      <div class="slide-content">
+        <div class="sentence-num">
+          <span class="lead" id="payLead" style="color:#eff6ff;">Sua fatura fecharia em</span>
+          <span class="num" style="color:#eff6ff;">R$ <span id="payNum">0,00</span></span>
+          <span class="tail late" id="payTail" style="color:#eff6ff;">na sua fatura de energia!</span>
+        </div>
+        <div class="deduct-area" id="deductArea">
+          <div class="deduct-list" id="deductList">
+            <div class="deduct" data-value="13.30"><span class="msr">flag</span><span class="deduct-body"><span class="lbl">Desconto em bandeira</span><b>− R$ 13,30</b></span></div>
+            <div class="deduct" data-value="43.50"><span class="msr">savings</span><span class="deduct-body"><span class="lbl">Desconto COGECOM</span><b>− R$ 43,50</b></span></div>
+            <div class="deduct" data-value="3.00"><span class="msr">redeem</span><span class="deduct-body"><span class="lbl">Bônus primeira fatura</span><b>− R$ 3,00</b></span></div>
+          </div>
+          <div class="deduct-icons" id="deductIcons">
+            <div class="deduct" tabindex="0"><span class="msr">flag</span><span class="deduct-body"><span class="lbl">Desconto em bandeira</span><b>− R$ 13,30</b></span></div>
+            <div class="deduct" tabindex="0"><span class="msr">savings</span><span class="deduct-body"><span class="lbl">Desconto COGECOM</span><b>− R$ 43,50</b></span></div>
+            <div class="deduct" tabindex="0"><span class="msr">redeem</span><span class="deduct-body"><span class="lbl">Bônus primeira fatura</span><b>− R$ 3,00</b></span></div>
+          </div>
+        </div>
+        <div class="pay-actions">
+          <button class="btn-pill" id="btnCopyPix"><span class="msr">content_copy</span>Copiar Chave PIX</button>
+          <button class="btn-pill" id="btnQr"><span class="msr">qr_code</span>Pagar com QR Code</button>
+          <div class="qr-wrap" id="qrWrap"><div class="qr-box" id="qrBox"></div></div>
+        </div>
+      </div>
+      <div class="bottom-nav"><div class="nav-chevron" data-prev><span class="mss">chevron_left</span></div><div class="nav-chevron" data-next><span class="mss">chevron_right</span></div></div>
+    </section>
+
+    <!-- 7. FIM -->
+    <section class="slide end-slide" data-duration="0" data-theme="indigo">
+      <div class="slide-bg">
+        <div class="grain"></div>
+        <div class="sparkle" style="top:14%;left:18%;font-size:18px;animation-delay:.1s;"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c0 6.6 5.4 12 12 12-6.6 0-12 5.4-12 12 0-6.6-5.4-12-12-12 6.6 0 12-5.4 12-12Z"/></svg></div>
+        <div class="sparkle" style="top:22%;left:78%;font-size:13px;animation-delay:.8s;"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c0 6.6 5.4 12 12 12-6.6 0-12 5.4-12 12 0-6.6-5.4-12-12-12 6.6 0 12-5.4 12-12Z"/></svg></div>
+        <div class="sparkle" style="top:65%;left:85%;font-size:15px;animation-delay:.5s;"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c0 6.6 5.4 12 12 12-6.6 0-12 5.4-12 12 0-6.6-5.4-12-12-12 6.6 0 12-5.4 12-12Z"/></svg></div>
+        <div class="sparkle" style="top:78%;left:22%;font-size:12px;animation-delay:1.1s;"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c0 6.6 5.4 12 12 12-6.6 0-12 5.4-12 12 0-6.6-5.4-12-12-12 6.6 0 12-5.4 12-12Z"/></svg></div>
+      </div>
+      <div class="slide-content">
+        <h1 class="headline" style="font-size:clamp(26px,7.5vw,32px);">Até a próxima fatura!</h1>
+        <p class="sub">Dúvidas? Fale com a gente em <b>cogecom.com.br/faturaCOPEL</b> ou cobrança@cogecom.com.br</p>
+        <div class="end-actions">
+          <button class="btn-pill" id="btnPayFromEnd"><span class="msr">payments</span>Pagar fatura</button>
+          <button class="btn-pill" id="btnDownload"><span class="msr">download</span>Baixar fatura completa</button>
+          <button class="btn-replay" id="btnReplay"><span class="msr" style="font-size:16px;">replay</span>Reassistir</button>
+        </div>
+      </div>
+      <div class="bottom-nav"><div class="nav-chevron" data-prev><span class="mss">chevron_left</span></div><div class="nav-chevron hidden"><span class="mss">chevron_right</span></div></div>
+    </section>
+
+  </div>
+
+  <div class="tap-zone tap-left" id="tapLeft"></div>
+  <div class="tap-zone tap-right" id="tapRight"></div>
+</div>
+
+<script>
+(function(){
+  const THEMES = {
+    blue:  ['#060a1c', '#12225c', '#2e5eea'],
+    teal:  ['#0d1f14', '#3f6b3a', '#e3b56a'],
+    lime:  ['#eefec9', '#8bd40e', '#baf743'],
+    amber: ['#241a15', '#4a3a30', '#7d6a58'],
+    indigo:['#1e1b4b', '#4338ca', '#6366f1'],
+  };
+
+  const slidesEl = document.getElementById('slides');
+  const slides = Array.from(slidesEl.querySelectorAll('.slide'));
+  const progressRow = document.getElementById('progressRow');
+  const stage = document.getElementById('stage');
+  const N = slides.length;
+  let current = 0;
+  let manualPause = false;
+  let holding = false;
+  let elapsedMs = 0;
+  let lastTs = null;
+  let ctxVariant = 0;
+  let piggyTimer = null;
+  let mapTimer = null;
+  let payTimers = [];
+
+  slides.forEach(s=>{
+    const [c1,c2,c3] = THEMES[s.dataset.theme] || THEMES.blue;
+    s.style.background = `linear-gradient(150deg, ${c1} 0%, ${c2} 55%, ${c3} 100%)`;
+  });
+
+  const segs = slides.map(()=>{
+    const seg = document.createElement('div'); seg.className='seg';
+    const fill = document.createElement('div'); fill.className='fill instant';
+    seg.appendChild(fill); progressRow.appendChild(seg);
+    return fill;
+  });
+
+  function formatNum(n, dec){ return n.toLocaleString('pt-BR', {minimumFractionDigits:dec, maximumFractionDigits:dec}); }
+  function countUp(el){
+    const target = parseFloat(el.dataset.count);
+    const dec = parseInt(el.dataset.dec || '0');
+    const start = performance.now();
+    const dur = 1100;
+    el.classList.remove('pop');
+    function tick(now){
+      const p = Math.min(1,(now-start)/dur);
+      const eased = 1-Math.pow(1-p,3);
+      el.textContent = formatNum(target*eased, dec);
+      if(p<1) requestAnimationFrame(tick);
+      else {
+        el.textContent = formatNum(target,dec);
+        // no porquinho o pulo vai na linha inteira (o clip do texto é do pai)
+        const popTarget = el.closest('.piggy-row') || el;
+        popTarget.classList.add('pop');
+        popTarget.addEventListener('animationend', ()=> popTarget.classList.remove('pop'), {once:true});
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // valores da variante com uso de saldo
+  const SALDO_SPLIT = { credito: 248, saldo: 48 };
+
+  function animateBars(variant){
+    const consumo = variant.querySelector('[data-bar="consumo"]');
+    const credito = variant.querySelector('[data-bar="credito"]');
+    const saldo   = variant.querySelector('[data-bar="saldo"]');
+    if(!consumo || !credito) return;
+    const cuC = consumo.closest('.bar-col').querySelector('.cu');
+    const cuG = credito.closest('.bar-col').querySelector('.cu');
+    const cVal = parseFloat(cuC.dataset.count);
+    const gVal = parseFloat(cuG.dataset.count);
+    const max = Math.max(cVal, gVal);
+    // a porcentagem do título sai dos próprios kWh: mudar o dado muda o texto
+    const pctCu = variant.querySelector('.ctx-pct');
+    if(pctCu){
+      pctCu.dataset.count = Math.round(Math.min(gVal, cVal) / cVal * 100);
+      pctCu.textContent = '0';
+    }
+
+    consumo.style.height = '0%'; credito.style.height = '0%';
+    if(saldo) saldo.style.height = '0%';
+    cuC.textContent = '0'; cuG.textContent = '0';
+
+    // barra 1 (consumo) cresce primeiro
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        consumo.style.height = (cVal/max*100)+'%';
+        countUp(cuC);
+      });
+    });
+    // barra 2 depois — na variante com saldo, empilha crédito e depois o saldo
+    setTimeout(()=>{
+      if(saldo){
+        credito.style.height = (SALDO_SPLIT.credito/max*100)+'%';
+        countUp(cuG);
+        setTimeout(()=>{ saldo.style.height = (SALDO_SPLIT.saldo/max*100)+'%'; }, 700);
+      } else {
+        credito.style.height = (gVal/max*100)+'%';
+        countUp(cuG);
+      }
+      if(pctCu) countUp(pctCu);
+    }, 750);
+  }
+
+  // anima um número entre dois valores quaisquer
+  function animateNumber(el, from, to, dur){
+    const start = performance.now();
+    function tick(now){
+      const p = Math.min(1,(now-start)/dur);
+      const eased = 1-Math.pow(1-p,3);
+      el.textContent = formatNum(from + (to-from)*eased, 2);
+      if(p<1) requestAnimationFrame(tick); else el.textContent = formatNum(to,2);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // os botões ocupam o espaço liberado pelos descontos. a altura é medida na
+  // hora e devolvida a 'auto' no fim, senão o QR não teria como abrir depois
+  function revealPay(pay){
+    pay.style.height = pay.scrollHeight + 'px';
+    pay.classList.add('on');
+    pay.addEventListener('transitionend', function done(e){
+      if(e.propertyName !== 'height') return;
+      pay.removeEventListener('transitionend', done);
+      pay.style.height = 'auto'; pay.style.overflow = 'visible';
+    });
+  }
+
+  // badges: crossfade entre a instância vertical e a horizontal (sem movimento)
+  function collapseBadges(area, icons){
+    area.style.height = icons.offsetHeight + 'px';
+    area.classList.add('icons');
+  }
+
+  // tela final: valor bruto vai caindo conforme cada desconto entra
+  const PAY_BASE = 306.60;
+  function runPayBreakdown(slide){
+    const num = slide.querySelector('#payNum');
+    const numBox = slide.querySelector('.sentence-num .num');
+    const area = slide.querySelector('#deductArea');
+    const list = slide.querySelector('#deductList');
+    const icons = slide.querySelector('#deductIcons');
+    const lead = slide.querySelector('#payLead');
+    const items = [...list.querySelectorAll('.deduct')];
+    if(!num) return;
+    const tail = slide.querySelector('#payTail');
+    const pay = slide.querySelector('.pay-actions');
+    payTimers.forEach(clearTimeout); payTimers = [];
+    pay.classList.remove('on');
+    pay.style.height = '0px'; pay.style.overflow = 'hidden';
+    area.classList.remove('icons');
+    area.style.height = list.offsetHeight + 'px';
+    tail.classList.remove('on');
+    items.forEach(d=> d.classList.remove('in'));
+    lead.style.opacity = 1;
+    lead.textContent = 'Sua fatura fecharia em';
+    let val = PAY_BASE;
+    num.textContent = '0,00';
+    animateNumber(num, 0, PAY_BASE, 1200);
+
+    let t = 1900;
+    items.forEach((item, idx)=>{
+      payTimers.push(setTimeout(()=>{
+        item.classList.add('in');
+        const from = val;
+        val = Math.round((val - parseFloat(item.dataset.value))*100)/100;
+        animateNumber(num, from, val, 800);
+        // o valor pisca em verde junto com o "tchan" do badge
+        numBox.classList.remove('flash');
+        void numBox.offsetWidth;
+        numBox.classList.add('flash');
+        if(idx === items.length-1){
+          payTimers.push(setTimeout(()=>{
+            lead.style.opacity = 0;
+            payTimers.push(setTimeout(()=>{
+              lead.textContent = 'Com descontos, só pague';
+              lead.style.opacity = 1;
+            }, 900));   // igual à transição de opacidade do lead
+            num.classList.add('pop');
+            num.addEventListener('animationend', ()=> num.classList.remove('pop'), {once:true});
+            // o texto de baixo só entra agora, com os descontos já aplicados
+            payTimers.push(setTimeout(()=> tail.classList.add('on'), 1900));
+            // os descontos encolhem para badges e os botões crescem no lugar
+            payTimers.push(setTimeout(()=>{ collapseBadges(area, icons); revealPay(pay); }, 2100));
+          }, 900));
+        }
+      }, t));
+      t += 950;
+    });
+  }
+
+  // partículas: cada faixa varrida pelo feixe vira cacos que convergem para o raio.
+  // os valores espelham --scan-start/--scan-dur do CSS; mexeu lá, mexe aqui.
+  const SCAN = { start:950, dur:1450, rows:24, perRow:3 };
+  // avalia a mesma cubic-bezier do CSS: distribuímos os cacos no TEMPO e
+  // perguntamos à curva onde o feixe está — assim não é preciso invertê-la
+  function bezierEase(x1,y1,x2,y2){
+    const cx=3*x1, bx=3*(x2-x1)-cx, ax=1-cx-bx;
+    const cy=3*y1, by=3*(y2-y1)-cy, ay=1-cy-by;
+    const fx=t=>((ax*t+bx)*t+cx)*t, dfx=t=>(3*ax*t+2*bx)*t+cx;
+    return u=>{
+      let t=u;
+      for(let i=0;i<6;i++){
+        const e=fx(t)-u; if(Math.abs(e)<1e-5) break;
+        const d=dfx(t);  if(Math.abs(d)<1e-6) break;
+        t-=e/d;
+      }
+      return ((ay*t+by)*t+cy)*t;
+    };
+  }
+  const easeScan = bezierEase(.45,0,.85,1);   // igual a --scan-ease
+  function spawnDust(slide){
+    const layer = slide.querySelector('.dust-layer');
+    if(!layer) return;
+    const W = 236, H = 318, TRAVEL = 318;   // TRAVEL = --scan-travel
+    const colors = ['#eaf3ff','#dbeafe','#bfdbfe','#93c5fd'];   // degradê até --bolt
+    const frag = document.createDocumentFragment();
+    for(let r=0; r<SCAN.rows; r++){
+      // a emissão para um pouco antes do fim da varredura, para o último caco
+      // pousar junto com o clarão do raio em vez de depois dele
+      const u = (r + Math.random()*0.9) / SCAN.rows * 0.94;   // fração do tempo
+      const prog = easeScan(u);                              // fração do percurso
+      for(let i=0; i<SCAN.perRow; i++){
+        const d = document.createElement('div');
+        d.className = 'dust';
+        const w = 2 + Math.random()*3.4;
+        const round = Math.random() < 0.28;
+        d.style.width = w.toFixed(1)+'px';
+        d.style.height = (round ? w : w*(0.7+Math.random()*0.9)).toFixed(1)+'px';
+        d.style.borderRadius = round ? '50%' : '1px';
+        d.style.background = colors[(Math.random()*colors.length)|0];
+        d.style.setProperty('--sx', ((Math.random()-0.5)*W*0.92).toFixed(1)+'px');
+        d.style.setProperty('--sy', (prog*TRAVEL - H/2).toFixed(1)+'px');
+        d.style.setProperty('--rot', ((Math.random()-0.5)*70).toFixed(0)+'deg');
+        d.style.animationDelay = (SCAN.start + u*SCAN.dur).toFixed(0)+'ms';
+        frag.appendChild(d);
+      }
+    }
+    layer.innerHTML = '';
+    layer.appendChild(frag);
+  }
+
+  function spawnConfetti(){
+    const layer = document.getElementById('confettiLayer');
+    if(!layer) return;
+    layer.innerHTML='';
+    const colors = ['#ffffff','#1b3003','#518209','#eefec9','#8bd40e','#c9f26a'];
+    for(let i=0;i<42;i++){
+      const outer = document.createElement('div');
+      outer.className = 'confetto';
+      const w = 6 + Math.random()*8;
+      const h = Math.random() < .35 ? w : w*1.6;
+      outer.style.width = w+'px';
+      outer.style.height = h+'px';
+      outer.style.left = (Math.random()*100)+'%';
+      // pesos diferentes: peças maiores caem um pouco mais rápido
+      const dur = 2.6 + Math.random()*2.4 - (w-6)*0.06;
+      outer.style.animationDuration = dur.toFixed(2)+'s';
+      outer.style.animationDelay = (Math.random()*1.1).toFixed(2)+'s';
+
+      const flake = document.createElement('div');
+      flake.className = 'flake';
+      flake.style.background = colors[i % colors.length];
+      flake.style.borderRadius = Math.random() < .3 ? '50%' : '2px';
+      flake.style.setProperty('--drift', (8 + Math.random()*20).toFixed(0)+'px');
+      flake.style.animationDuration = (0.6 + Math.random()*0.9).toFixed(2)+'s';
+      flake.style.animationDelay = (Math.random()*0.5).toFixed(2)+'s';
+
+      outer.appendChild(flake);
+      layer.appendChild(outer);
+    }
+  }
+
+  function positionSlides(){
+    slides.forEach((el,i)=>{
+      el.style.transform = `translateX(${(i-current)*100}%)`;
+      el.classList.toggle('is-active', i===current);
+    });
+  }
+  positionSlides();
+  requestAnimationFrame(()=>{ slidesEl.classList.add('ready'); });
+
+  function updateSegs(){
+    segs.forEach((fill,i)=>{
+      fill.classList.remove('animating'); fill.classList.add('instant');
+      if(i<current) fill.style.width='100%';
+      else if(i>current) fill.style.width='0%';
+      else { const dur = parseInt(slides[i].dataset.duration||'0'); fill.style.width = dur>0 ? '0%' : '100%'; }
+    });
+  }
+
+  function goTo(i){
+    if(i<0) i=0; if(i>=N) i=N-1;
+    current = i;
+    elapsedMs = 0; lastTs = null;
+    positionSlides(); updateSegs();
+    const cur = slides[current];
+    if(cur.querySelector('.confetti-layer')) spawnConfetti();
+
+    // tela 1: cada caco já carrega o delay do feixe, então basta criá-los agora
+    spawnDust(cur);
+
+    // tela de consumo: alterna entre cobertura total e uso de saldo a cada passagem
+    const variants = cur.querySelectorAll('.ctx-variant');
+    if(variants.length){
+      variants.forEach((v,i)=> v.classList.toggle('on', i === ctxVariant % variants.length));
+      ctxVariant++;
+      animateBars(cur.querySelector('.ctx-variant.on'));
+    }
+
+    // tela de economia: porquinho só enche depois do valor do mês terminar
+    const piggy = cur.querySelector('#piggy');
+    if(piggy){
+      clearTimeout(piggyTimer);
+      piggy.classList.remove('filled');
+      const piggyCu = cur.querySelector('.cu-piggy');
+      if(piggyCu) piggyCu.textContent = '0,00';
+      piggyTimer = setTimeout(()=>{
+        piggy.classList.add('filled');
+        if(piggyCu) countUp(piggyCu);
+      }, 1600);
+    }
+
+    // mapa: a distância conta junto com o traçado, depois que o box aparece
+    const mapCu = cur.querySelector('.cu-map');
+    if(mapCu){
+      clearTimeout(mapTimer);
+      mapCu.textContent = '0';
+      mapTimer = setTimeout(()=> countUp(mapCu), 1750);
+    }
+
+    // tela de CO₂: o ar limpa e o céu vira golden hour conforme o número sobe
+    // fundo claro pede UI escura (contraste)
+    stage.classList.toggle('ui-dark', cur.dataset.theme === 'lime');
+
+    // árvores: uma por unidade, brotando em sequência
+    const trees = cur.querySelector('.trees');
+    if(trees){
+      const n = parseInt(trees.dataset.count || '0', 10);
+      trees.innerHTML = '';
+      for(let i=0;i<n;i++){
+        const t = document.createElement('span');
+        t.className = 'tree msr';
+        t.textContent = 'park';
+        t.style.animationDelay = (0.3 + i*0.45).toFixed(2) + 's';
+        trees.appendChild(t);
+      }
+    }
+
+    const smog = cur.querySelector('#smog');
+    const golden = cur.querySelector('#goldenHour');
+    if(smog){
+      smog.classList.remove('cleared');
+      if(golden) golden.classList.remove('on');
+      requestAnimationFrame(()=>{ requestAnimationFrame(()=>{
+        smog.classList.add('cleared');
+        if(golden) golden.classList.add('on');
+      }); });
+    }
+
+    // tela final: descontos entram um a um abatendo o valor
+    if(cur.querySelector('#payNum')) runPayBreakdown(cur);
+    else { payTimers.forEach(clearTimeout); payTimers = []; }
+
+    cur.querySelectorAll('.cu:not(.cu-bar):not(.cu-piggy):not(.cu-map)').forEach(countUp);
+  }
+  function next(){ if(current < N-1) goTo(current+1); else goTo(current); }
+  function prev(){ goTo(current-1); }
+
+  // dispara os efeitos do primeiro slide pelo mesmo caminho dos demais
+  goTo(0);
+
+  function loop(ts){
+    if(lastTs==null) lastTs = ts;
+    const dt = ts - lastTs; lastTs = ts;
+    const paused = manualPause || holding;
+    if(!paused){
+      const cur = slides[current];
+      const dur = parseInt(cur.dataset.duration||'0');
+      if(dur>0){
+        elapsedMs += dt;
+        const fill = segs[current];
+        fill.classList.remove('instant'); fill.classList.add('animating');
+        fill.style.transitionDuration='0s';
+        fill.style.width = Math.min(100, (elapsedMs/dur)*100)+'%';
+        if(elapsedMs>=dur) next();
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  const INTERACTIVE_SEL = 'button, .nav-chevron, a, input, textarea, select';
+  let holdTimer=null, wasHolding=false;
+  function startHold(){ holdTimer = setTimeout(()=>{ holding=true; wasHolding=true; }, 180); }
+  function endHold(){ if(holdTimer) clearTimeout(holdTimer); holding = false; }
+  stage.addEventListener('pointerdown', (e)=>{ if(e.target.closest(INTERACTIVE_SEL)) return; wasHolding=false; startHold(); });
+  ['pointerup','pointercancel','pointerleave'].forEach(evt=> stage.addEventListener(evt, endHold));
+
+  function spawnRipple(clientX, clientY){
+    const rect = stage.getBoundingClientRect();
+    const activeSlide = slides[current];
+    const r = document.createElement('div');
+    r.className = 'ripple';
+    r.style.left = (clientX - rect.left) + 'px';
+    r.style.top = (clientY - rect.top) + 'px';
+    activeSlide.appendChild(r);
+    r.addEventListener('animationend', ()=> r.remove(), {once:true});
+  }
+
+  stage.addEventListener('click', (e)=>{
+    if(e.target.closest(INTERACTIVE_SEL)) return;
+    if(wasHolding){ wasHolding=false; return; }
+    spawnRipple(e.clientX, e.clientY);
+    const rect = stage.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    (x < rect.width*0.32) ? prev() : next();
+  });
+
+  let touchStartX=null;
+  stage.addEventListener('touchstart', (e)=>{
+    if(e.target.closest(INTERACTIVE_SEL)) { touchStartX=null; return; }
+    touchStartX = e.touches[0].clientX;
+  }, {passive:true});
+  stage.addEventListener('touchend', (e)=>{
+    if(touchStartX==null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if(Math.abs(dx) > 60){ dx<0 ? next() : prev(); }
+    touchStartX = null;
+  }, {passive:true});
+
+  // explicit chevron nav buttons
+  document.querySelectorAll('[data-next]').forEach(b=> b.addEventListener('click', (e)=>{ e.stopPropagation(); next(); }));
+  document.querySelectorAll('[data-prev]').forEach(b=> b.addEventListener('click', (e)=>{ e.stopPropagation(); prev(); }));
+  // chromeless shortcut buttons (skip straight to a section)
+  document.querySelectorAll('[data-goto]').forEach(b=> b.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    goTo(parseInt(b.dataset.goto, 10));
+  }));
+
+  // header controls
+  document.getElementById('btnPause').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    manualPause = !manualPause;
+    document.getElementById('pauseIcon').textContent = manualPause ? 'play_arrow' : 'pause';
+  });
+  document.getElementById('btnSkip').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const payIndex = slides.findIndex(s=>s.querySelector('#btnCopyPix'));
+    goTo(payIndex>=0?payIndex:N-1);
+  });
+  document.getElementById('btnReplay').addEventListener('click', (e)=>{ e.stopPropagation(); goTo(0); });
+
+  // última tela: ir direto para o pagamento
+  document.getElementById('btnPayFromEnd').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const payIndex = slides.findIndex(s=> s.querySelector('#btnCopyPix'));
+    goTo(payIndex >= 0 ? payIndex : N-1);
+  });
+
+  // última tela: baixar a fatura completa (resumo gerado na hora)
+  document.getElementById('btnDownload').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const btn = e.currentTarget;
+    const doc = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Fatura COGECOM · Novembro/2024</title>
+<style>
+body{font-family:system-ui,-apple-system,sans-serif;color:#1c1917;max-width:620px;margin:40px auto;padding:0 24px;line-height:1.5}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:#78716c;margin:28px 0 8px}
+table{width:100%;border-collapse:collapse;font-size:14px}td{padding:8px 0;border-bottom:1px solid #e7e5e4}
+td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.total td{border-bottom:none;border-top:2px solid #1c1917;font-weight:700;font-size:16px;padding-top:12px}
+small{color:#78716c}
+</style></head><body>
+<h1>Cooperativa de Geração Compartilhada COGECOM</h1>
+<small>CNPJ 28.307.135/0001-13 · cobrança@cogecom.com.br</small>
+<h2>Cooperado</h2>
+<table><tr><td>Thiago Vinicius Rodrigues de Souza</td><td>Unidade 5682943</td></tr>
+<tr><td>Mês de referência</td><td>Novembro / 2024</td></tr></table>
+<h2>Energia</h2>
+<table><tr><td>Consumo medido</td><td>296 kWh</td></tr>
+<tr><td>Crédito recebido da usina</td><td>310 kWh</td></tr></table>
+<h2>Valores</h2>
+<table>
+<tr><td>Valor sem benefícios</td><td>R$ 306,60</td></tr>
+<tr><td>Desconto em bandeira</td><td>− R$ 13,30</td></tr>
+<tr><td>Desconto COGECOM</td><td>− R$ 43,50</td></tr>
+<tr><td>Bônus primeira fatura</td><td>− R$ 3,00</td></tr>
+<tr class="total"><td>Total a pagar</td><td>R$ 246,80</td></tr>
+</table>
+<h2>Pagamento</h2>
+<table><tr><td>Chave PIX</td><td>29d5731d-3e81-45ca-bf1c-016aad963ac1</td></tr></table>
+<p><small>Documento de demonstração gerado pelo piloto COGECOM. Dados fictícios.</small></p>
+</body></html>`;
+    const url = URL.createObjectURL(new Blob([doc], {type:'text/html;charset=utf-8'}));
+    const a = document.createElement('a');
+    a.href = url; a.download = 'fatura-cogecom-novembro-2024.html';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(url), 2000);
+    const original = btn.innerHTML;
+    btn.innerHTML = '<span class="msr">check</span>Baixado!';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.innerHTML = original; btn.classList.remove('copied'); }, 1800);
+  });
+
+  // PIX copy
+  document.getElementById('btnCopyPix').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const btn = e.currentTarget;
+    const text = '29d5731d-3e81-45ca-bf1c-016aad963ac1';
+    const done = ()=>{
+      const original = btn.innerHTML;
+      btn.innerHTML = '<span class="msr">check</span>Copiado!';
+      btn.classList.add('copied');
+      setTimeout(()=>{ btn.innerHTML = original; btn.classList.remove('copied'); }, 1600);
+    };
+    if(navigator.clipboard && window.isSecureContext){ navigator.clipboard.writeText(text).then(done).catch(done); }
+    else {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); }catch(err){}
+      document.body.removeChild(ta); done();
+    }
+  });
+
+  // QR toggle + pseudo QR generation
+  const qrWrap = document.getElementById('qrWrap');
+  let qrBuilt=false;
+  document.getElementById('btnQr').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    qrWrap.classList.toggle('open');
+    // o QR só cabe se o hero subir e os selos saírem
+    e.currentTarget.closest('.slide').classList.toggle('qr-open', qrWrap.classList.contains('open'));
+    if(qrWrap.classList.contains('open') && !qrBuilt){ buildQr(); qrBuilt=true; }
+  });
+  function buildQr(){
+    const box = document.getElementById('qrBox');
+    const n = 21; let seed = 77;
+    function rnd(){ seed = (seed*1103515245+12345) & 0x7fffffff; return (seed/0x7fffffff); }
+    const cell = 100/n; let rects='';
+    const zones = [[0,0],[0,n-7],[n-7,0]];
+    function finderCell(r,c,zr,zc){ const lr=r-zr, lc=c-zc; return lr===0||lr===6||lc===0||lc===6||(lr>=2&&lr<=4&&lc>=2&&lc<=4); }
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+      let on; const zone = zones.find(([zr,zc])=> r>=zr && r<zr+7 && c>=zc && c<zc+7);
+      if(zone) on = finderCell(r,c,zone[0],zone[1]); else on = rnd() > 0.55;
+      if(on) rects += `<rect x="${(c*cell).toFixed(2)}" y="${(r*cell).toFixed(2)}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}"/>`;
+    }
+    box.innerHTML = `<svg viewBox="0 0 100 100" fill="#111">${rects}</svg>`;
+  }
+})();
+</script>
+
