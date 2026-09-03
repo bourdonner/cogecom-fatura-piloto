@@ -1292,7 +1292,16 @@
 
   // só começa quando o gate liberar (ou de imediato, se ele não existir)
   let iniciado = false;
-  function iniciar(){ if(iniciado) return; iniciado = true; goTo(0); }
+  function iniciar(){
+    if(iniciado) return;
+    iniciado = true;
+    // as animações da tela 1 são disparadas por .is-active, que positionSlides()
+    // já aplicou no carregamento — ou seja, elas rodaram atrás do gate. Sem tirar
+    // a classe e forçar o reflow, reaplicá-la não reinicia nada.
+    slides.forEach(sl => sl.classList.remove('is-active'));
+    void slidesEl.offsetWidth;
+    goTo(0);
+  }
   function voltarAoGate(){
     const g = document.getElementById('gate');
     if(!g) return;
