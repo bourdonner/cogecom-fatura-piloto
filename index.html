@@ -1,4 +1,11 @@
-<title>COGECOM Wrapped</title>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#060a1c">
+<title>COGECOM Wrapped · Sua fatura</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800;900&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet">
@@ -11,7 +18,7 @@
     --scan-start:.95s;
     --scan-dur:1.45s;
     /* corte e feixe percorrem a mesma distância: a altura exata da folha */
-    --scan-travel:318px;
+    --scan-travel:280px;
     --scan-ease:cubic-bezier(.45,0,.85,1);
     /* o feixe, os cacos e o raio saem todos desta cor */
     --bolt:#93c5fd;
@@ -127,21 +134,21 @@
 
   /* ===== hero: a fatura de papel é varrida por um feixe e vira energia ===== */
   .paper-stage{
-    position:absolute; top:46%; left:50%; width:236px; height:318px; margin:-159px 0 0 -118px;
-    filter:drop-shadow(0 30px 44px rgba(0,0,0,.5)); opacity:0; z-index:1;
+    position:absolute; top:46%; left:50%; width:264px; height:280px; margin:-140px 0 0 -132px;
+    filter:drop-shadow(0 20px 36px rgba(0,0,0,.42)); opacity:0; z-index:1;
   }
   .slide.is-active .paper-stage{ animation:paperIn .65s ease-out .1s forwards; }
   @keyframes paperIn{ from{opacity:0;} to{opacity:1;} }
 
-  .paper-doc{ position:absolute; inset:0; transform:rotate(-2deg); }
-  .doc-svg{ position:absolute; top:0; left:0; width:236px; height:318px; display:block; }
+  .paper-doc{ position:absolute; inset:0; }
+  .doc-svg{ position:absolute; top:0; left:0; width:264px; height:280px; display:block; }
 
   /* a folha some de cima para baixo junto com o feixe: a máscara tem o dobro
      da altura da página, então deslocá-la de 100% a 0% varre a página inteira */
   /* a folha é cortada de cima para baixo. clip-path porque mask-size/mask-position
      animados falham em Safari/iOS — lá o feixe passava e o conteúdo ficava */
   .p-intact{
-    position:absolute; inset:0; overflow:hidden; border-radius:5px;
+    position:absolute; inset:0; overflow:hidden;
     -webkit-clip-path:inset(0 0 0 0); clip-path:inset(0 0 0 0);
   }
   .slide.is-active .p-intact{ animation:scanErase var(--scan-dur) var(--scan-ease) var(--scan-start) forwards; }
@@ -191,23 +198,6 @@
     100%{ opacity:0;   transform:translate(0,0) rotate(calc(var(--rot) * 2.4)) scale(.18); }
   }
 
-  /* fake bill content */
-  .d-head{ height:36px; background:#22345f; display:flex; align-items:center; gap:7px; padding:0 13px; }
-  .d-logo{ width:38px; height:9px; border-radius:2px; background:rgba(255,255,255,.9); }
-  .d-headline{ flex:1; height:4px; border-radius:2px; background:rgba(255,255,255,.32); }
-  .d-body{ padding:13px; }
-  .d-line{ height:4px; border-radius:2px; background:rgba(28,25,23,.15); margin-bottom:8px; }
-  .d-grid{ display:grid; grid-template-columns:1fr 1fr; gap:9px 12px; margin:12px 0; }
-  .d-cell .t{ height:3px; width:52%; background:rgba(28,25,23,.12); border-radius:2px; margin-bottom:5px; }
-  .d-cell .v{ height:6px; width:78%; background:rgba(28,25,23,.24); border-radius:2px; }
-  .d-box{ border:1px solid rgba(28,25,23,.14); border-radius:5px; padding:9px 10px; margin:12px 0; background:rgba(28,25,23,.03); }
-  .d-box .lbl{ height:3px; width:38%; background:rgba(28,25,23,.14); border-radius:2px; margin-bottom:7px; }
-  .d-box .big{ height:12px; width:64%; background:rgba(28,25,23,.32); border-radius:3px; }
-  .d-barcode{ height:30px; margin-top:14px; opacity:.72;
-    background:repeating-linear-gradient(90deg,#1c1917 0 2px, transparent 2px 4px, #1c1917 4px 5px, transparent 5px 9px, #1c1917 9px 11px, transparent 11px 13px); }
-
-  /* atrás da fatura (z-index abaixo do .paper-stage): o raio vai sendo
-     revelado conforme o feixe consome a folha que o cobre */
   .digital-spark{
     position:absolute; top:46%; left:50%; width:70px; height:70px; margin:-35px 0 0 -35px;
     display:flex; align-items:center; justify-content:center; opacity:0; z-index:0;
@@ -464,6 +454,28 @@
   .nav-mid .msr{font-size:16px;}
   .nav-mid:active{transform:scale(.95); opacity:.7;}
 
+  /* "fatura" é riscada e dá lugar a "economia". As duas palavras têm larguras
+     diferentes, então a do container é animada em px (medida no JS) — sem isso
+     o "!" daria um salto no meio da troca. */
+  .swap{
+    position:relative; display:inline-block; white-space:nowrap; vertical-align:baseline;
+    transition:width .55s cubic-bezier(.4,0,.2,1);
+  }
+  .swap-old, .swap-new{
+    display:inline-block; white-space:nowrap;
+    transition:opacity .4s ease, transform .4s cubic-bezier(.3,.9,.35,1.1);
+  }
+  .swap-old{ position:relative; }
+  .swap-new{ position:absolute; left:0; top:0; opacity:0; transform:translateY(.22em); }
+  .swap-old::after{
+    content:''; position:absolute; left:-.05em; right:100%; top:.54em; height:.075em;
+    background:currentColor; border-radius:99px;
+    transition:right .45s cubic-bezier(.55,0,.45,1);
+  }
+  .swap.riscado .swap-old::after{ right:-.05em; }
+  .swap.trocado .swap-old{ opacity:0; transform:translateY(-.22em); }
+  .swap.trocado .swap-new{ opacity:1; transform:translateY(0); }
+
   .end-actions{ display:flex; flex-direction:column; align-items:center; gap:12px; margin-top:26px; }
   .btn-replay{
     margin-top:4px; background:none; border:none; color:rgba(255,255,255,.75);
@@ -569,7 +581,8 @@
   .tap-left{left:0; width:32%;}
   .tap-right{left:32%; right:0;}
 </style>
-
+</head>
+<body>
 
 <div class="gate" id="gate">
   <div class="gate-card">
@@ -625,41 +638,23 @@
         <div class="paper-stage">
           <div class="paper-doc">
             <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-              <linearGradient id="billPaper" x1="0" y1="0" x2="0.4" y2="1">
-                <stop offset="0" stop-color="#fdfbf6"/><stop offset="1" stop-color="#e7e3d7"/>
+              <linearGradient id="billGrad" x1="104.265" y1="229.976" x2="173.995" y2="33.037" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#6AAAFF"/><stop offset="1" stop-color="#9CE0FF"/>
               </linearGradient>
-              <pattern id="billBars" width="9" height="30" patternUnits="userSpaceOnUse">
-                <rect x="0" y="0" width="2" height="30" fill="#1c1917"/>
-                <rect x="4" y="0" width="1" height="30" fill="#1c1917"/>
-                <rect x="6.5" y="0" width="1.6" height="30" fill="#1c1917"/>
-              </pattern>
-              <g id="billDoc">
-                <rect width="236" height="318" rx="5" fill="url(#billPaper)"/>
-                <path d="M0 5a5 5 0 0 1 5-5h226a5 5 0 0 1 5 5v31H0z" fill="#22345f"/>
-                <rect x="13" y="13" width="38" height="10" rx="2" fill="#fff" opacity=".92"/>
-                <rect x="59" y="16" width="118" height="4" rx="2" fill="#fff" opacity=".3"/>
-                <rect x="13" y="50" width="193" height="4" rx="2" fill="#1c1917" opacity=".15"/>
-                <rect x="13" y="62" width="132" height="4" rx="2" fill="#1c1917" opacity=".15"/>
-                <rect x="13" y="82" width="46" height="3" rx="1.5" fill="#1c1917" opacity=".12"/>
-                <rect x="13" y="90" width="72" height="6" rx="2" fill="#1c1917" opacity=".24"/>
-                <rect x="126" y="82" width="46" height="3" rx="1.5" fill="#1c1917" opacity=".12"/>
-                <rect x="126" y="90" width="80" height="6" rx="2" fill="#1c1917" opacity=".24"/>
-                <rect x="13" y="108" width="46" height="3" rx="1.5" fill="#1c1917" opacity=".12"/>
-                <rect x="13" y="116" width="64" height="6" rx="2" fill="#1c1917" opacity=".24"/>
-                <rect x="126" y="108" width="46" height="3" rx="1.5" fill="#1c1917" opacity=".12"/>
-                <rect x="126" y="116" width="76" height="6" rx="2" fill="#1c1917" opacity=".24"/>
-                <rect x="13" y="140" width="210" height="52" rx="5" fill="#1c1917" opacity=".03" stroke="#1c1917" stroke-opacity=".14"/>
-                <rect x="24" y="152" width="72" height="3" rx="1.5" fill="#1c1917" opacity=".16"/>
-                <rect x="24" y="163" width="122" height="12" rx="3" fill="#1c1917" opacity=".32"/>
-                <rect x="13" y="206" width="168" height="4" rx="2" fill="#1c1917" opacity=".15"/>
-                <rect x="13" y="218" width="204" height="4" rx="2" fill="#1c1917" opacity=".15"/>
-                <rect x="13" y="230" width="104" height="4" rx="2" fill="#1c1917" opacity=".15"/>
-                <rect x="13" y="252" width="210" height="30" fill="url(#billBars)" opacity=".72"/>
-                <rect x="13" y="292" width="126" height="4" rx="2" fill="#1c1917" opacity=".12"/>
+              <clipPath id="billClip"><rect width="188.231" height="200" fill="white" transform="translate(56.0918 20.3174)"/></clipPath>
+              <g id="billDoc" clip-path="url(#billClip)">
+                <path d="M243.193 77.7055L217.103 70.7776C217.131 70.7108 217.169 70.632 217.198 70.5652C221.782 60.4526 228.091 50.4188 235 50.7363C235.676 50.765 236.304 50.8629 236.881 51.0061L236.9 51.0156C248.266 53.921 243.191 77.7055 243.191 77.7055H243.193Z" fill="#4F8CFF"/>
+                <path d="M236.884 51.0085C236.304 50.8629 235.676 50.7674 235.002 50.7363C228.094 50.4188 221.782 60.455 217.198 70.5652C217.169 70.6344 217.131 70.7108 217.103 70.7776C212.798 80.322 209.58 90.3677 208.1 100.729C205.591 118.273 200.308 145.977 196.376 160.774C189.685 185.967 174.497 213.07 170.913 220.317L168.538 213.151L156.15 217.868H156.148L152.5 208.863L140.069 213.597L136.293 204.404L123.626 209.229L119.801 200.08L107.22 204.872H107.218L103.164 195.385L90.156 200.338L86.3292 190.653L72.9198 195.759L68.9068 186.229L56.0918 190.495C58.8563 184.921 77.4795 148.379 81.853 130.36C85.1427 116.812 90.8651 86.159 93.5675 70.305C95.3436 59.9131 98.3158 49.7528 102.665 40.1439C107.259 30.0314 113.571 20.0048 120.47 20.3247C121.019 20.3533 121.53 20.4106 122.012 20.5276L122.977 20.7782L123.055 20.8069L236.884 51.0085Z" fill="url(#billGrad)"/>
+                <path d="M147.422 68.7503C150.676 57.2035 144.284 45.2978 133.144 42.1582C122.005 39.0186 110.336 45.8341 107.082 57.381C103.828 68.9278 110.22 80.8335 121.359 83.9731C132.499 87.1126 144.167 80.2972 147.422 68.7503Z" fill="#2C65E3"/>
+                <path d="M132.222 53.0973L118.557 62.2024C118.082 62.5175 118.192 63.2433 118.739 63.4056L124.853 65.2247C125.309 65.3608 125.483 65.9123 125.189 66.2847L120.923 71.6943C120.472 72.2672 121.129 73.0503 121.771 72.7017L135.462 65.3035C135.973 65.0266 135.915 64.2746 135.369 64.0788L129.931 62.1356C129.551 61.9995 129.374 61.5602 129.556 61.1997L133.196 53.9591C133.507 53.3432 132.798 52.7153 132.222 53.0973Z" fill="#9CE0FF"/>
+                <path d="M79.8787 171.968C79.1148 171.719 78.697 170.896 78.9453 170.132L84.6366 152.678C84.8849 151.914 85.7085 151.497 86.4724 151.745C87.2364 151.993 87.6541 152.817 87.4058 153.581L81.7145 171.034C81.4663 171.798 80.6427 172.216 79.8787 171.968ZM99.7577 156.078C98.9938 155.83 98.1725 156.247 97.9219 157.011L92.2306 174.465C91.9823 175.229 92.4001 176.05 93.164 176.301C93.9279 176.549 94.7492 176.131 94.9998 175.367L100.691 157.914C100.939 157.15 100.522 156.328 99.7577 156.078ZM120.265 162.765C119.501 162.516 118.679 162.934 118.429 163.698L112.737 181.152C112.489 181.915 112.907 182.737 113.671 182.987C114.435 183.236 115.256 182.818 115.507 182.054L121.198 164.6C121.446 163.836 121.028 163.015 120.265 162.765ZM125.254 164.393C124.49 164.144 123.669 164.562 123.418 165.326L117.727 182.78C117.479 183.544 117.896 184.365 118.66 184.615C119.424 184.864 120.245 184.446 120.496 183.682L126.187 166.229C126.436 165.465 126.018 164.643 125.254 164.393ZM138.002 168.549C137.238 168.301 136.417 168.719 136.166 169.482L130.475 186.936C130.227 187.7 130.644 188.521 131.408 188.772C132.172 189.02 132.994 188.602 133.244 187.838L138.936 170.385C139.184 169.621 138.766 168.8 138.002 168.549ZM166.924 177.981C166.16 177.733 165.339 178.151 165.088 178.915L159.397 196.368C159.149 197.132 159.566 197.953 160.33 198.204C161.094 198.452 161.916 198.034 162.166 197.27L167.858 179.817C168.106 179.053 167.688 178.232 166.924 177.981ZM172.606 179.831C171.842 179.583 171.021 180.001 170.77 180.765L165.079 198.218C164.83 198.982 165.248 199.803 166.012 200.054C166.776 200.302 167.597 199.885 167.848 199.121L173.539 181.667C173.788 180.903 173.37 180.082 172.606 179.831ZM89.8958 154.392L84.2045 171.846C83.9562 172.61 84.374 173.431 85.1379 173.682L87.9072 174.584C88.6711 174.832 89.4923 174.415 89.743 173.651L95.4343 156.197C95.6826 155.433 95.2648 154.612 94.5009 154.361L91.7316 153.459C90.9677 153.211 90.1465 153.628 89.8958 154.392ZM102.914 158.637L97.2224 176.09C96.9741 176.854 97.3919 177.676 98.1558 177.926L100.925 178.829C101.689 179.077 102.51 178.659 102.761 177.895L108.452 160.442C108.7 159.678 108.283 158.857 107.519 158.606L104.75 157.704C103.986 157.455 103.164 157.873 102.914 158.637ZM110.67 161.168L104.979 178.621C104.73 179.385 105.148 180.206 105.912 180.457L108.681 181.359C109.445 181.607 110.267 181.19 110.517 180.426L116.209 162.972C116.457 162.208 116.039 161.387 115.275 161.136L112.506 160.234C111.742 159.986 110.921 160.404 110.67 161.168ZM128.41 166.952L122.719 184.405C122.47 185.169 122.888 185.991 123.652 186.241L126.421 187.144C127.185 187.392 128.006 186.974 128.257 186.21L133.948 168.757C134.197 167.993 133.779 167.172 133.015 166.921L130.246 166.018C129.482 165.77 128.661 166.188 128.41 166.952ZM141.838 171.33L136.147 188.784C135.899 189.548 136.317 190.369 137.081 190.619L139.85 191.522C140.614 191.77 141.435 191.352 141.686 190.588L147.377 173.135C147.625 172.371 147.207 171.55 146.444 171.299L143.674 170.397C142.91 170.148 142.089 170.566 141.838 171.33ZM149.59 173.858L143.899 191.312C143.65 192.076 144.068 192.897 144.832 193.148L147.601 194.05C148.365 194.298 149.187 193.881 149.437 193.117L155.128 175.663C155.377 174.899 154.959 174.078 154.195 173.827L151.426 172.925C150.662 172.677 149.841 173.094 149.59 173.858ZM157.339 176.386L151.648 193.84C151.4 194.604 151.817 195.425 152.581 195.676L155.351 196.578C156.114 196.826 156.936 196.409 157.186 195.645L162.878 178.191C163.126 177.427 162.708 176.606 161.944 176.355L159.175 175.453C158.411 175.205 157.59 175.623 157.339 176.386ZM96.098 119.557L93.8253 126.003C93.546 126.791 93.99 127.652 94.7921 127.884L145.687 142.678C146.451 142.9 147.25 142.468 147.484 141.709L149.315 135.774C149.554 135.003 149.12 134.186 148.346 133.952L97.8956 118.647C97.1508 118.421 96.3582 118.822 96.1004 119.557H96.098ZM92.4669 130.952L91.8677 133.451C91.6839 134.215 92.1422 134.988 92.899 135.196L122.986 143.411C123.829 143.64 124.681 143.084 124.81 142.22L125.104 140.245C125.211 139.527 124.772 138.839 124.075 138.634L94.2932 129.894C93.4934 129.66 92.6627 130.142 92.4669 130.952ZM90.7409 139.166L90.1441 141.649C89.9602 142.411 90.4138 143.182 91.1706 143.392L110.109 148.656C110.952 148.89 111.811 148.333 111.938 147.467L112.234 145.483C112.339 144.772 111.911 144.091 111.224 143.879L92.5863 138.116C91.7841 137.868 90.9366 138.35 90.7409 139.166Z" fill="#6AAAFF"/>
+                <path d="M155.756 55.7855L154.646 59.8629C154.295 61.1569 155.045 62.4913 156.332 62.8662L205.278 77.0538C206.632 77.4453 208.038 76.6193 208.353 75.2466L209.432 70.5461C209.726 69.2665 208.962 67.9821 207.697 67.6312L158.779 54.069C157.468 53.7061 156.112 54.4772 155.754 55.7902L155.756 55.7855Z" fill="#6AAAFF"/>
+                <path d="M173.721 72.346C173.124 73.6901 173.838 75.2537 175.244 75.6882L203.051 84.2443C204.318 84.6334 205.667 83.9482 206.095 82.6925L206.274 82.1697C206.727 80.8424 205.978 79.4028 204.629 79.0161L176.643 70.9805C175.466 70.6415 174.217 71.224 173.721 72.3436V72.346Z" fill="#6AAAFF"/>
+                <path d="M181.79 83.6519L181.783 83.6686C181.183 85.0174 181.902 86.5859 183.315 87.0132L200.124 92.1005C201.389 92.4825 202.731 91.7949 203.158 90.5464L203.328 90.0498C203.786 88.7082 203.018 87.2591 201.647 86.8867L184.676 82.2792C183.506 81.9617 182.282 82.5442 181.79 83.6519Z" fill="#6AAAFF"/>
               </g>
             </defs></svg>
 
-            <div class="p-intact"><svg class="doc-svg" viewBox="0 0 236 318"><use href="#billDoc"/></svg></div>
+            <div class="p-intact"><svg class="doc-svg" viewBox="56.0918 20.3174 188.231 200"><use href="#billDoc"/></svg></div>
             <div class="scan-beam"></div>
           </div>
         </div>
@@ -901,7 +896,7 @@
         <div class="sparkle" style="top:78%;left:22%;font-size:12px;animation-delay:1.1s;"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c0 6.6 5.4 12 12 12-6.6 0-12 5.4-12 12 0-6.6-5.4-12-12-12 6.6 0 12-5.4 12-12Z"/></svg></div>
       </div>
       <div class="slide-content">
-        <h1 class="headline" style="font-size:clamp(26px,7.5vw,32px);">Até a próxima fatura!</h1>
+        <h1 class="headline" style="font-size:clamp(26px,7.5vw,32px);">Até a próxima <span class="swap" id="swapWord"><span class="swap-old">fatura</span><span class="swap-new">economia</span></span>!</h1>
         <p class="sub">Dúvidas? Fale com a gente em <b>cogecom.com.br/faturaCOPEL</b> ou cobrança@cogecom.com.br</p>
         <div class="end-actions">
           <button class="btn-pill" id="btnPayFromEnd"><span class="msr">payments</span>Pagar fatura</button>
@@ -943,6 +938,7 @@
   let piggyTimer = null;
   let mapTimer = null;
   let payTimers = [];
+  let swapTimers = [];
 
   slides.forEach(s=>{
     const [c1,c2,c3] = THEMES[s.dataset.theme] || THEMES.blue;
@@ -1134,7 +1130,7 @@
   function spawnDust(slide){
     const layer = slide.querySelector('.dust-layer');
     if(!layer) return;
-    const W = 236, H = 318, TRAVEL = 318;   // TRAVEL = --scan-travel
+    const W = 264, H = 280, TRAVEL = 280;   // TRAVEL = --scan-travel
     const colors = ['#eaf3ff','#dbeafe','#bfdbfe','#93c5fd'];   // degradê até --bolt
     const frag = document.createDocumentFragment();
     for(let r=0; r<SCAN.rows; r++){
@@ -1285,6 +1281,23 @@
         smog.classList.add('cleared');
         if(golden) golden.classList.add('on');
       }); });
+    }
+
+    // última tela: "fatura" é riscada e vira "economia"
+    swapTimers.forEach(clearTimeout); swapTimers = [];
+    const swap = cur.querySelector('#swapWord');
+    if(swap){
+      const velho = swap.querySelector('.swap-old'), novo = swap.querySelector('.swap-new');
+      swap.classList.remove('riscado','trocado');
+      swap.style.width = 'auto';
+      // largura das duas palavras medida agora: a fonte já carregou a esta altura
+      const wVelho = velho.offsetWidth, wNovo = novo.offsetWidth;
+      swap.style.width = wVelho + 'px';
+      swapTimers.push(setTimeout(()=> swap.classList.add('riscado'), 1200));
+      swapTimers.push(setTimeout(()=>{
+        swap.classList.add('trocado');
+        swap.style.width = wNovo + 'px';
+      }, 2000));
     }
 
     // tela final: descontos entram um a um abatendo o valor
@@ -1525,13 +1538,13 @@ small{color:#78716c}
       arvores:8, co2:417, rota:{km:2660, de:'São Paulo', para:'Recife'},
       base:1284.60, descontoMes:182.40, acumulado:1203.80, deducoes:[55.70, 182.40, 3.00],
       copy:{
-        sub1:'A conta de novembro da empresa cabe em 30 segundos. Veja o que a energia da operação fez pelo negócio.',
-        consumoTotal:'O consumo da empresa foi 100% coberto por energia limpa e renovável!',
-        consumoResto:'% do consumo da empresa veio de energia limpa e renovável.',
-        arvores:'Em novembro a energia da empresa poupou o carbono que',
-        desconto:'Neste mês a conta da empresa veio',
-        co2:'Como cooperada, a empresa já deixou de emitir',
-        payLead1:'A fatura da empresa fecharia em',
+        sub1:'A conta de novembro da organização cabe em 30 segundos. Veja o que essa energia fez por ela.',
+        consumoTotal:'O consumo da organização foi 100% coberto por energia limpa e renovável!',
+        consumoResto:'% do consumo da organização veio de energia limpa e renovável.',
+        arvores:'Em novembro a energia da organização poupou o carbono que',
+        desconto:'Neste mês a conta da organização veio',
+        co2:'Como cooperada, a organização já deixou de emitir',
+        payLead1:'A fatura da organização fecharia em',
         payLead2:'Com os descontos, ela fecha em',
         payTail:'na conta de energia deste mês.'
       }
@@ -1633,3 +1646,5 @@ small{color:#78716c}
 })();
 </script>
 
+</body>
+</html>
