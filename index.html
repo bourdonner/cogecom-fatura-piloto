@@ -40,13 +40,6 @@
   }
   .gate.off{ display:none; }
   .gate-card{ width:100%; max-width:380px; display:flex; flex-direction:column; gap:24px; }
-  .gate-eyebrow{
-    display:inline-flex; align-items:center; gap:7px; align-self:flex-start;
-    padding:6px 12px; border-radius:99px; background:rgba(186,247,67,.12);
-    border:1px solid rgba(186,247,67,.3); color:#baf743;
-    font-family:var(--font-head); font-weight:700; font-size:10px; letter-spacing:.9px; text-transform:uppercase;
-  }
-  .gate-eyebrow .msr{ font-size:13px; }
   .gate h2{
     font-family:var(--font-head); font-weight:800; font-size:27px; line-height:1.15;
     margin:0; color:#fff; text-wrap:balance;
@@ -74,10 +67,6 @@
   }
   .gate-go:hover{ filter:brightness(1.06); }
   .gate-go:active{ transform:scale(.98); }
-  .gate-note{
-    font-size:11.5px; line-height:1.55; color:rgba(226,236,255,.42); text-align:center;
-    border-top:1px solid rgba(226,236,255,.1); padding-top:16px;
-  }
   .gate :focus-visible{ outline:2px solid #baf743; outline-offset:2px; }
 
   /* ===== stage ===== */
@@ -90,7 +79,7 @@
   }
 
   /* ===== progress bar ===== */
-  .progress-row{ position:absolute; top:0; left:0; right:0; z-index:30; display:flex; gap:5px; padding:calc(env(safe-area-inset-top,0px) + 54px) 12px 0; }
+  .progress-row{ position:absolute; top:0; left:0; right:0; z-index:30; pointer-events:none; display:flex; gap:5px; padding:calc(env(safe-area-inset-top,0px) + 54px) 12px 0; }
   .seg{flex:1; height:3px; border-radius:99px; background:rgba(255,255,255,.24); overflow:hidden;}
   .seg .fill{height:100%; width:0%; background:#fff; border-radius:99px; position:relative;}
   .seg .fill.instant{transition:none;}
@@ -573,10 +562,7 @@
 
 <div class="gate" id="gate">
   <div class="gate-card">
-    <div>
-      <span class="gate-eyebrow"><span class="msr">science</span>Ambiente de verificação</span>
-      <h2>O que você quer ver?</h2>
-    </div>
+    <h2>O que você quer ver?</h2>
 
     <div class="gate-field">
       <span class="gate-label">Perfil do cooperado</span>
@@ -597,7 +583,6 @@
     </div>
 
     <button class="gate-go" id="gateGo"><span class="msr">play_arrow</span>Ver os stories</button>
-    <p class="gate-note">Esta tela não faz parte da experiência do cooperado — ela existe só para conferir os cenários. O ✕ no topo dos stories volta para cá.</p>
   </div>
 </div>
 
@@ -1388,11 +1373,7 @@
   });
   document.getElementById('btnSkip').addEventListener('click', (e)=>{
     e.stopPropagation();
-    // com o gate presente o X é ferramenta de conferência: volta para a seleção.
-    // sem ele (produção), mantém o comportamento de pular para o pagamento.
-    if(document.getElementById('gate')) return voltarAoGate();
-    const payIndex = slides.findIndex(s=>s.querySelector('#btnCopyPix'));
-    goTo(payIndex>=0?payIndex:N-1);
+    voltarAoGate();
   });
   document.getElementById('btnReplay').addEventListener('click', (e)=>{ e.stopPropagation(); goTo(0); });
 
