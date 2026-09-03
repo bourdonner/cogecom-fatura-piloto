@@ -32,6 +32,57 @@
   .msr{font-family:'Material Symbols Rounded';}
   .mss{font-family:'Material Symbols Sharp';}
 
+  /* ===== gate de verificação (não faz parte da experiência) ===== */
+  .gate{
+    position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center;
+    padding:24px; background:linear-gradient(155deg,#05070f 0%,#101d47 52%,#1f3a86 100%);
+    overflow-y:auto;
+  }
+  .gate.off{ display:none; }
+  .gate-card{ width:100%; max-width:404px; display:flex; flex-direction:column; gap:26px; }
+  .gate-eyebrow{
+    display:inline-flex; align-items:center; gap:7px; align-self:flex-start;
+    padding:6px 12px; border-radius:99px; background:rgba(186,247,67,.12);
+    border:1px solid rgba(186,247,67,.3); color:#baf743;
+    font-family:var(--font-head); font-weight:700; font-size:10px; letter-spacing:.9px; text-transform:uppercase;
+  }
+  .gate-eyebrow .msr{ font-size:13px; }
+  .gate h2{
+    font-family:var(--font-head); font-weight:800; font-size:27px; line-height:1.15;
+    margin:0; color:#fff; text-wrap:balance;
+  }
+  .gate h2 + p{ margin-top:9px; font-size:14px; line-height:1.5; color:rgba(226,236,255,.6); }
+  .gate-field{ display:flex; flex-direction:column; gap:11px; }
+  .gate-label{
+    font-family:var(--font-head); font-weight:700; font-size:10.5px; letter-spacing:.7px;
+    text-transform:uppercase; color:rgba(226,236,255,.5);
+  }
+  .gate-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    padding:10px 15px; border-radius:12px; border:1px solid rgba(226,236,255,.18);
+    background:rgba(226,236,255,.05); color:rgba(226,236,255,.82);
+    font-family:var(--font-body); font-weight:600; font-size:13.5px; line-height:1.2;
+    transition:background .18s, border-color .18s, color .18s, transform .12s;
+  }
+  .chip:hover{ border-color:rgba(226,236,255,.34); }
+  .chip:active{ transform:scale(.97); }
+  .chip[aria-pressed="true"]{ background:#baf743; border-color:#baf743; color:#16260a; }
+  .chip .hint{ display:block; font-size:11px; font-weight:500; opacity:.62; margin-top:2px; }
+  .chip[aria-pressed="true"] .hint{ opacity:.66; }
+  .gate-go{
+    margin-top:2px; padding:16px; border-radius:14px; background:#baf743; color:#16260a;
+    font-family:var(--font-head); font-weight:800; font-size:15px;
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    transition:transform .12s, filter .18s;
+  }
+  .gate-go:hover{ filter:brightness(1.06); }
+  .gate-go:active{ transform:scale(.98); }
+  .gate-note{
+    font-size:11.5px; line-height:1.55; color:rgba(226,236,255,.42); text-align:center;
+    border-top:1px solid rgba(226,236,255,.1); padding-top:16px;
+  }
+  .gate :focus-visible{ outline:2px solid #baf743; outline-offset:2px; }
+
   /* ===== stage ===== */
   .stage{
     position:relative; width:100vw; height:100dvh; max-width:480px; max-height:960px;
@@ -523,6 +574,37 @@
 </style>
 
 
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <div>
+      <span class="gate-eyebrow"><span class="msr">science</span>Ambiente de verificação</span>
+      <h2>O que você quer ver?</h2>
+      <p>Escolha o cenário e a experiência roda com esses dados.</p>
+    </div>
+
+    <div class="gate-field">
+      <span class="gate-label">Perfil do cooperado</span>
+      <div class="gate-chips" id="gatePerfil">
+        <button class="chip" data-v="pf" aria-pressed="true">Pessoa física<span class="hint">296 kWh · R$ 306,60</span></button>
+        <button class="chip" data-v="pj" aria-pressed="false">Pessoa jurídica<span class="hint">1.240 kWh · R$ 1.284,60</span></button>
+      </div>
+    </div>
+
+    <div class="gate-field">
+      <span class="gate-label">Variante de consumo</span>
+      <div class="gate-chips" id="gateVariante">
+        <button class="chip" data-v="-1" aria-pressed="true">Alternar<span class="hint">uma a cada passagem</span></button>
+        <button class="chip" data-v="0" aria-pressed="false">Cobertura total<span class="hint">crédito cobre tudo</span></button>
+        <button class="chip" data-v="1" aria-pressed="false">Com saldo<span class="hint">crédito + acumulado</span></button>
+        <button class="chip" data-v="2" aria-pressed="false">Parcial<span class="hint">sem saldo, 80%</span></button>
+      </div>
+    </div>
+
+    <button class="gate-go" id="gateGo"><span class="msr">play_arrow</span>Ver os stories</button>
+    <p class="gate-note">Esta tela não faz parte da experiência do cooperado — ela existe só para conferir os cenários. Recarregue a página para voltar aqui.</p>
+  </div>
+</div>
+
 <div class="stage" id="stage">
   <div class="top-controls">
     <button class="icon-btn" id="btnPause" aria-label="Pausar"><span class="mss" id="pauseIcon">pause</span></button>
@@ -855,6 +937,7 @@
   let elapsedMs = 0;
   let lastTs = null;
   let ctxVariant = 0;
+  let ctxForced = null;   // gate: trava uma variante em vez de alternar
   let piggyTimer = null;
   let mapTimer = null;
   let payTimers = [];
@@ -895,7 +978,7 @@
   }
 
   // valores da variante com uso de saldo
-  const SALDO_SPLIT = { credito: 248, saldo: 48 };
+  let SALDO_SPLIT = { credito: 248, saldo: 48 };
 
   function animateBars(variant){
     const consumo = variant.querySelector('[data-bar="consumo"]');
@@ -970,7 +1053,7 @@
   }
 
   // tela final: valor bruto vai caindo conforme cada desconto entra
-  const PAY_BASE = 306.60;
+  let PAY_BASE = 306.60;
   function runPayBreakdown(slide){
     const num = slide.querySelector('#payNum');
     const numBox = slide.querySelector('.sentence-num .num');
@@ -1140,8 +1223,8 @@
     // tela de consumo: alterna entre cobertura total e uso de saldo a cada passagem
     const variants = cur.querySelectorAll('.ctx-variant');
     if(variants.length){
-      variants.forEach((v,i)=> v.classList.toggle('on', i === ctxVariant % variants.length));
-      ctxVariant++;
+      const vi = ctxForced !== null ? ctxForced : (ctxVariant++ % variants.length);
+      variants.forEach((v,i)=> v.classList.toggle('on', i === vi));
       animateBars(cur.querySelector('.ctx-variant.on'));
     }
 
@@ -1204,13 +1287,14 @@
   function next(){ if(current < N-1) goTo(current+1); else goTo(current); }
   function prev(){ goTo(current-1); }
 
-  // dispara os efeitos do primeiro slide pelo mesmo caminho dos demais
-  goTo(0);
+  // só começa quando o gate liberar (ou de imediato, se ele não existir)
+  let iniciado = false;
+  function iniciar(){ if(iniciado) return; iniciado = true; goTo(0); }
 
   function loop(ts){
     if(lastTs==null) lastTs = ts;
     const dt = ts - lastTs; lastTs = ts;
-    const paused = manualPause || holding;
+    const paused = !iniciado || manualPause || holding;
     if(!paused){
       const cur = slides[current];
       const dur = parseInt(cur.dataset.duration||'0');
@@ -1312,18 +1396,18 @@ small{color:#78716c}
 <h1>Cooperativa de Geração Compartilhada COGECOM</h1>
 <small>CNPJ 28.307.135/0001-13 · cobrança@cogecom.com.br</small>
 <h2>Cooperado</h2>
-<table><tr><td>Thiago Vinicius Rodrigues de Souza</td><td>Unidade 5682943</td></tr>
+<table><tr><td>${PERFIL.nomeCompleto}</td><td>${PERFIL.unidade}</td></tr>
 <tr><td>Mês de referência</td><td>Novembro / 2024</td></tr></table>
 <h2>Energia</h2>
-<table><tr><td>Consumo medido</td><td>296 kWh</td></tr>
-<tr><td>Crédito recebido da usina</td><td>310 kWh</td></tr></table>
+<table><tr><td>Consumo medido</td><td>${formatNum(PERFIL.consumo,0)} kWh</td></tr>
+<tr><td>Crédito recebido da usina</td><td>${formatNum(PERFIL.creditoTotal,0)} kWh</td></tr></table>
 <h2>Valores</h2>
 <table>
-<tr><td>Valor sem benefícios</td><td>R$ 306,60</td></tr>
-<tr><td>Desconto em bandeira</td><td>− R$ 13,30</td></tr>
-<tr><td>Desconto COGECOM</td><td>− R$ 43,50</td></tr>
-<tr><td>Bônus primeira fatura</td><td>− R$ 3,00</td></tr>
-<tr class="total"><td>Total a pagar</td><td>R$ 246,80</td></tr>
+<tr><td>Valor sem benefícios</td><td>R$ ${formatNum(PERFIL.base,2)}</td></tr>
+<tr><td>Desconto em bandeira</td><td>− R$ ${formatNum(PERFIL.deducoes[0],2)}</td></tr>
+<tr><td>Desconto COGECOM</td><td>− R$ ${formatNum(PERFIL.deducoes[1],2)}</td></tr>
+<tr><td>Bônus primeira fatura</td><td>− R$ ${formatNum(PERFIL.deducoes[2],2)}</td></tr>
+<tr class="total"><td>Total a pagar</td><td>R$ ${formatNum(PERFIL.base - PERFIL.deducoes.reduce((a,b)=>a+b,0), 2)}</td></tr>
 </table>
 <h2>Pagamento</h2>
 <table><tr><td>Chave PIX</td><td>29d5731d-3e81-45ca-bf1c-016aad963ac1</td></tr></table>
@@ -1383,6 +1467,82 @@ small{color:#78716c}
       if(on) rects += `<rect x="${(c*cell).toFixed(2)}" y="${(r*cell).toFixed(2)}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}"/>`;
     }
     box.innerHTML = `<svg viewBox="0 0 100 100" fill="#111">${rects}</svg>`;
+  }
+
+  // ═══ gate de verificação ═══════════════════════════════════════════════
+  // ATENÇÃO: os números de PJ são ILUSTRATIVOS — escalados a partir das
+  // proporções do PF só para o cenário ficar coerente na tela. Substituir
+  // por dados reais antes de qualquer uso que não seja conferência visual.
+  const PERFIS = {
+    pf: {
+      saudacao:'Oi, Thiago!',
+      nomeCompleto:'Thiago Vinicius Rodrigues de Souza', unidade:'Unidade 5682943',
+      consumo:296, creditoTotal:310, saldoSplit:{credito:248, saldo:48}, creditoParcial:237,
+      arvores:2, co2:94, rota:{km:600, de:'São Paulo', para:'Belo Horizonte'},
+      base:306.60, descontoMes:43.50, acumulado:287.00, deducoes:[13.30, 43.50, 3.00]
+    },
+    pj: {
+      saudacao:'Oi, Aurora Alimentos!',
+      nomeCompleto:'Aurora Alimentos Ltda', unidade:'Unidade 7714208',
+      consumo:1240, creditoTotal:1290, saldoSplit:{credito:1040, saldo:200}, creditoParcial:992,
+      arvores:8, co2:417, rota:{km:2660, de:'São Paulo', para:'Recife'},
+      base:1284.60, descontoMes:182.40, acumulado:1203.80, deducoes:[55.70, 182.40, 3.00]
+    }
+  };
+  let PERFIL = PERFIS.pf;
+
+  function aplicarPerfil(chave){
+    const P = PERFIL = PERFIS[chave] || PERFIS.pf;
+    const q = sel => document.querySelector(sel);
+
+    q('.greeting').textContent = P.saudacao;
+
+    // consumo: o mesmo valor nas três variantes, crédito próprio de cada uma
+    const vars = [...document.querySelectorAll('.ctx-variant')];
+    const barCu = (v, bar) => v.querySelector('[data-bar="'+bar+'"]').closest('.bar-col').querySelector('.cu');
+    vars.forEach(v => barCu(v,'consumo').dataset.count = P.consumo);
+    barCu(vars[0],'credito').dataset.count = P.creditoTotal;
+    barCu(vars[1],'credito').dataset.count = P.consumo;      // crédito + saldo fecham o consumo
+    barCu(vars[2],'credito').dataset.count = P.creditoParcial;
+    SALDO_SPLIT = P.saldoSplit;
+
+    q('.trees').dataset.count = P.arvores;
+    q('[data-theme="teal"] .sentence-num .num').textContent = P.arvores + ' árvores';
+
+    q('[data-theme="amber"] .sentence-num .num .cu').dataset.count = P.co2;
+    q('.cu-map').dataset.count = P.rota.km;
+    q('.map-city.from').textContent = P.rota.de;
+    q('.map-city.to').textContent = P.rota.para;
+
+    q('[data-theme="lime"] .sentence-num .num .cu').dataset.count = P.descontoMes.toFixed(2);
+    q('.cu-piggy').dataset.count = P.acumulado.toFixed(2);
+
+    PAY_BASE = P.base;
+    document.querySelectorAll('#deductList .deduct').forEach((d,i)=> d.dataset.value = P.deducoes[i].toFixed(2));
+    ['#deductList','#deductIcons'].forEach(sel =>
+      document.querySelectorAll(sel+' .deduct b').forEach((b,i)=> b.textContent = '− R$ ' + formatNum(P.deducoes[i], 2)));
+  }
+
+  const gate = document.getElementById('gate');
+  if(!gate) iniciar();
+  else {
+    let perfil = 'pf';
+    const grupo = (id, aoEscolher) => {
+      const box = document.getElementById(id);
+      box.addEventListener('click', e => {
+        const chip = e.target.closest('.chip');
+        if(!chip) return;
+        box.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === chip)));
+        aoEscolher(chip.dataset.v);
+      });
+    };
+    grupo('gatePerfil', v => perfil = v);
+    grupo('gateVariante', v => ctxForced = (v === '-1' ? null : parseInt(v, 10)));
+    document.getElementById('gateGo').addEventListener('click', ()=>{
+      aplicarPerfil(perfil);
+      gate.classList.add('off');
+      iniciar();
+    });
   }
 })();
 </script>
