@@ -67,6 +67,16 @@
   }
   .gate-go:hover{ filter:brightness(1.06); }
   .gate-go:active{ transform:scale(.98); }
+  .gate-random{
+    padding:13px; border-radius:14px; border:1px solid rgba(226,236,255,.18);
+    background:none; color:rgba(226,236,255,.72);
+    font-family:var(--font-body); font-weight:600; font-size:13.5px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    transition:border-color .18s, color .18s, transform .12s;
+  }
+  .gate-random:hover{ border-color:rgba(226,236,255,.34); color:#fff; }
+  .gate-random:active{ transform:scale(.98); }
+  .gate-random .msr{ font-size:17px; }
   .gate :focus-visible{ outline:2px solid #baf743; outline-offset:2px; }
 
   /* ===== stage ===== */
@@ -388,6 +398,7 @@
     font-size:13px; font-weight:600; color:#eff6ff; opacity:0; transform:translateY(10px);
     transition:padding .45s cubic-bezier(.4,0,.2,1), gap .45s cubic-bezier(.4,0,.2,1), background .3s ease, transform .25s ease;
   }
+  .deduct.off{ display:none; }
   .deduct .msr{ font-size:17px; opacity:.9; flex:none; }
   .deduct-body{ display:flex; align-items:center; gap:9px; flex:1; max-width:240px; overflow:hidden; white-space:nowrap; transition:max-width .45s cubic-bezier(.4,0,.2,1), opacity .3s ease, gap .45s ease; }
   .deduct .lbl{ flex:1; text-align:left; }
@@ -582,7 +593,17 @@
       </div>
     </div>
 
+    <div class="gate-field">
+      <span class="gate-label">Descontos aplicados</span>
+      <div class="gate-chips" id="gateDescontos">
+        <button class="chip" data-v="3" aria-pressed="true">Todos</button>
+        <button class="chip" data-v="2" aria-pressed="false">Sem bônus</button>
+        <button class="chip" data-v="1" aria-pressed="false">Só COGECOM</button>
+      </div>
+    </div>
+
     <button class="gate-go" id="gateGo"><span class="msr">play_arrow</span>Ver os stories</button>
+    <button class="gate-random" id="gateRandom"><span class="msr">shuffle</span>Sortear cenário</button>
   </div>
 </div>
 
@@ -648,7 +669,7 @@
       </div>
       <div class="slide-content">
         <div class="greeting">Oi, Thiago!</div>
-        <h1 class="headline" style="font-size:clamp(26px,7.6vw,32px); font-weight:700;">Ler fatura gigante é coisa do passado.</h1>
+        <h1 class="headline" style="font-size:clamp(26px,7.6vw,32px); font-weight:700;">Ler fatura é coisa do passado.</h1>
         <p class="sub">Sua conta de novembro cabe em 30 segundos. Veja o que a sua energia fez por você.</p>
       </div>
       <div class="bottom-nav">
@@ -713,7 +734,7 @@
 
         <!-- variante C: sem saldo, e o crédito não cobriu o consumo inteiro -->
         <div class="ctx-variant" data-variant="parcial">
-          <h1 class="headline lg"><span class="cu cu-bar ctx-pct" data-dec="0">0</span>% do seu consumo veio de energia limpa e&nbsp;renovável.</h1>
+          <h1 class="headline lg"><span class="cu cu-bar ctx-pct" data-dec="0">0</span><span class="ctx-resto">% do seu consumo veio de energia limpa e renovável.</span></h1>
           <div class="bar-chart">
             <div class="bar-col">
               <div class="bar-track"><div class="bar-fill" data-bar="consumo" style="background:linear-gradient(180deg,#3b82f6,#2563eb);"></div></div>
@@ -1042,7 +1063,7 @@
     const list = slide.querySelector('#deductList');
     const icons = slide.querySelector('#deductIcons');
     const lead = slide.querySelector('#payLead');
-    const items = [...list.querySelectorAll('.deduct')];
+    const items = [...list.querySelectorAll('.deduct:not(.off)')];
     if(!num) return;
     const tail = slide.querySelector('#payTail');
     const pay = slide.querySelector('.pay-actions');
@@ -1054,7 +1075,7 @@
     tail.classList.remove('on');
     items.forEach(d=> d.classList.remove('in'));
     lead.style.opacity = 1;
-    lead.textContent = 'Sua fatura fecharia em';
+    lead.textContent = PERFIL.copy.payLead1;
     let val = PAY_BASE;
     num.textContent = '0,00';
     animateNumber(num, 0, PAY_BASE, 1200);
@@ -1074,7 +1095,7 @@
           payTimers.push(setTimeout(()=>{
             lead.style.opacity = 0;
             payTimers.push(setTimeout(()=>{
-              lead.textContent = 'Com descontos, só pague';
+              lead.textContent = PERFIL.copy.payLead2;
               lead.style.opacity = 1;
             }, 900));   // igual à transição de opacidade do lead
             num.classList.add('pop');
@@ -1484,14 +1505,36 @@ small{color:#78716c}
       nomeCompleto:'Thiago Vinicius Rodrigues de Souza', unidade:'Unidade 5682943',
       consumo:296, creditoTotal:310, saldoSplit:{credito:248, saldo:48}, creditoParcial:237,
       arvores:2, co2:94, rota:{km:600, de:'São Paulo', para:'Belo Horizonte'},
-      base:306.60, descontoMes:43.50, acumulado:287.00, deducoes:[13.30, 43.50, 3.00]
+      base:306.60, descontoMes:43.50, acumulado:287.00, deducoes:[13.30, 43.50, 3.00],
+      copy:{
+        sub1:'Sua conta de novembro cabe em 30 segundos. Veja o que a sua energia fez por você.',
+        consumoTotal:'Seu consumo foi 100% coberto por energia limpa e renovável!',
+        consumoResto:'% do seu consumo veio de energia limpa e renovável.',
+        arvores:'Em novembro sua energia poupou o carbono que',
+        desconto:'Neste mês sua conta veio',
+        co2:'Como cooperado, você já deixou de emitir',
+        payLead1:'Sua fatura fecharia em',
+        payLead2:'Com descontos, só pague',
+        payTail:'na sua fatura de energia!'
+      }
     },
     pj: {
       saudacao:'Oi, Aurora Alimentos!',
       nomeCompleto:'Aurora Alimentos Ltda', unidade:'Unidade 7714208',
       consumo:1240, creditoTotal:1290, saldoSplit:{credito:1040, saldo:200}, creditoParcial:992,
       arvores:8, co2:417, rota:{km:2660, de:'São Paulo', para:'Recife'},
-      base:1284.60, descontoMes:182.40, acumulado:1203.80, deducoes:[55.70, 182.40, 3.00]
+      base:1284.60, descontoMes:182.40, acumulado:1203.80, deducoes:[55.70, 182.40, 3.00],
+      copy:{
+        sub1:'A conta de novembro da empresa cabe em 30 segundos. Veja o que a energia da operação fez pelo negócio.',
+        consumoTotal:'O consumo da empresa foi 100% coberto por energia limpa e renovável!',
+        consumoResto:'% do consumo da empresa veio de energia limpa e renovável.',
+        arvores:'Em novembro a energia da empresa poupou o carbono que',
+        desconto:'Neste mês a conta da empresa veio',
+        co2:'Como cooperada, a empresa já deixou de emitir',
+        payLead1:'A fatura da empresa fecharia em',
+        payLead2:'Com os descontos, ela fecha em',
+        payTail:'na conta de energia deste mês.'
+      }
     }
   };
   let PERFIL = PERFIS.pf;
@@ -1501,6 +1544,17 @@ small{color:#78716c}
     const q = sel => document.querySelector(sel);
 
     q('.greeting').textContent = P.saudacao;
+
+    // copy: PJ fala da organização, não de "você"
+    const C = P.copy;
+    q('.slide.hero-late .sub').textContent = C.sub1;
+    q('.ctx-variant[data-variant="full"] h1').textContent = C.consumoTotal;
+    q('.ctx-variant[data-variant="saldo"] h1').textContent = C.consumoTotal;
+    q('.ctx-resto').textContent = C.consumoResto;
+    q('[data-theme="teal"] .lead').textContent = C.arvores;
+    q('[data-theme="lime"] .lead').textContent = C.desconto;
+    q('[data-theme="amber"] .lead').textContent = C.co2;
+    q('#payTail').textContent = C.payTail;
 
     // consumo: o mesmo valor nas três variantes, crédito próprio de cada uma
     const vars = [...document.querySelectorAll('.ctx-variant')];
@@ -1528,25 +1582,52 @@ small{color:#78716c}
       document.querySelectorAll(sel+' .deduct b').forEach((b,i)=> b.textContent = '− R$ ' + formatNum(P.deducoes[i], 2)));
   }
 
+  // quais descontos entram, por índice no DOM: 0 bandeira · 1 COGECOM · 2 bônus
+  const DESCONTOS = { '3':[0,1,2], '2':[0,1], '1':[1] };
+  function aplicarDescontos(chave){
+    const manter = DESCONTOS[chave] || DESCONTOS['3'];
+    ['#deductList','#deductIcons'].forEach(sel =>
+      document.querySelectorAll(sel+' .deduct').forEach((d,i)=> d.classList.toggle('off', !manter.includes(i))));
+  }
+
   const gate = document.getElementById('gate');
   if(!gate) iniciar();
   else {
-    let perfil = 'pf';
+    let perfil = 'pf', descontos = '3';
+    const marcar = (id, v) => document.querySelectorAll('#'+id+' .chip')
+      .forEach(c => c.setAttribute('aria-pressed', String(c.dataset.v === v)));
     const grupo = (id, aoEscolher) => {
-      const box = document.getElementById(id);
-      box.addEventListener('click', e => {
+      document.getElementById(id).addEventListener('click', e => {
         const chip = e.target.closest('.chip');
         if(!chip) return;
-        box.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === chip)));
+        marcar(id, chip.dataset.v);
         aoEscolher(chip.dataset.v);
       });
     };
     grupo('gatePerfil', v => perfil = v);
     grupo('gateVariante', v => ctxForced = (v === '-1' ? null : parseInt(v, 10)));
-    document.getElementById('gateGo').addEventListener('click', ()=>{
+    grupo('gateDescontos', v => descontos = v);
+
+    function comecar(){
       aplicarPerfil(perfil);
+      aplicarDescontos(descontos);
       gate.classList.add('off');
       iniciar();
+    }
+    document.getElementById('gateGo').addEventListener('click', comecar);
+
+    // sorteio: escolhe uma variante concreta (não "alternar"), para o cenário
+    // sorteado se manter igual a cada passagem pela tela
+    document.getElementById('gateRandom').addEventListener('click', ()=>{
+      const sorteia = arr => arr[Math.floor(Math.random()*arr.length)];
+      perfil = sorteia(['pf','pj']);
+      descontos = sorteia(['3','2','1']);
+      const variante = sorteia(['0','1','2']);
+      ctxForced = parseInt(variante, 10);
+      marcar('gatePerfil', perfil);
+      marcar('gateVariante', variante);
+      marcar('gateDescontos', descontos);
+      comecar();
     });
   }
 })();
