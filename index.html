@@ -66,6 +66,8 @@
   .chip:hover{ border-color:rgba(226,236,255,.34); }
   .chip:active{ transform:scale(.97); }
   .chip[aria-pressed="true"]{ background:#baf743; border-color:#baf743; color:#16260a; }
+  .chip:disabled{ opacity:.3; cursor:not-allowed; }
+  .chip:disabled:hover{ border-color:rgba(226,236,255,.18); }
   .gate-go{
     margin-top:2px; padding:16px; border-radius:14px; background:#baf743; color:#16260a;
     font-family:var(--font-head); font-weight:800; font-size:15px;
@@ -613,7 +615,7 @@
     <div class="gate-field">
       <span class="gate-label">Tempo de COGECOM</span>
       <div class="gate-chips" id="gateTempo">
-        <button class="chip" data-v="3" aria-pressed="false">3 meses</button>
+        <button class="chip" data-v="1" aria-pressed="false">1 mês</button>
         <button class="chip" data-v="12" aria-pressed="true">1 ano</button>
         <button class="chip" data-v="60" aria-pressed="false">5 anos</button>
       </div>
@@ -909,7 +911,7 @@
         <div class="sparkle" style="top:78%;left:22%;font-size:12px;animation-delay:1.1s;"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c0 6.6 5.4 12 12 12-6.6 0-12 5.4-12 12 0-6.6-5.4-12-12-12 6.6 0 12-5.4 12-12Z"/></svg></div>
       </div>
       <div class="slide-content">
-        <h1 class="headline" style="font-size:clamp(26px,7.5vw,32px);">Até a próxima <span class="swap" id="swapWord"><span class="swap-old">fatura</span><span class="swap-new">economia</span></span>!</h1>
+        <h1 class="headline" style="font-size:clamp(26px,7.5vw,32px); text-wrap:normal;">Até a próxima<br><span class="swap" id="swapWord"><span class="swap-old">fatura</span><span class="swap-new">economia</span></span>!</h1>
         <p class="sub">Dúvidas? Fale com a gente em <b>cogecom.com.br/faturaCOPEL</b> ou cobrança@cogecom.com.br</p>
         <div class="end-actions">
           <button class="btn-pill" id="btnPayFromEnd"><span class="msr">payments</span>Pagar fatura</button>
@@ -1651,12 +1653,25 @@ small{color:#78716c}
   if(!gate) iniciar();
   else {
     let perfil = 'pf', descontos = '3', tempo = '12';
+
+    // o bônus é de primeira fatura: fora do primeiro mês ele não existe.
+    // desabilita "Todos" e cai para "Sem bônus" se estava selecionado.
+    function atualizarBonus(){
+      const todos = document.querySelector('#gateDescontos [data-v="3"]');
+      const podeBonus = tempo === '1';
+      todos.disabled = !podeBonus;
+      todos.title = podeBonus ? '' : 'O bônus só existe na primeira fatura';
+      if(!podeBonus && descontos === '3'){
+        descontos = '2';
+        marcar('gateDescontos', '2');
+      }
+    }
     const marcar = (id, v) => document.querySelectorAll('#'+id+' .chip')
       .forEach(c => c.setAttribute('aria-pressed', String(c.dataset.v === v)));
     const grupo = (id, aoEscolher) => {
       document.getElementById(id).addEventListener('click', e => {
         const chip = e.target.closest('.chip');
-        if(!chip) return;
+        if(!chip || chip.disabled) return;
         marcar(id, chip.dataset.v);
         aoEscolher(chip.dataset.v);
       });
@@ -1664,7 +1679,8 @@ small{color:#78716c}
     grupo('gatePerfil', v => perfil = v);
     grupo('gateVariante', v => ctxForced = (v === '-1' ? null : parseInt(v, 10)));
     grupo('gateDescontos', v => descontos = v);
-    grupo('gateTempo', v => tempo = v);
+    grupo('gateTempo', v => { tempo = v; atualizarBonus(); });
+    atualizarBonus();
 
     function comecar(){
       aplicarPerfil(perfil, parseInt(tempo, 10));
@@ -1679,14 +1695,15 @@ small{color:#78716c}
     document.getElementById('gateRandom').addEventListener('click', ()=>{
       const sorteia = arr => arr[Math.floor(Math.random()*arr.length)];
       perfil = sorteia(['pf','pj']);
-      descontos = sorteia(['3','2','1']);
-      tempo = sorteia(['3','12','60']);
+      tempo = sorteia(['1','12','60']);
+      descontos = sorteia(tempo === '1' ? ['3','2','1'] : ['2','1']);
       const variante = sorteia(['0','1','2']);
       ctxForced = parseInt(variante, 10);
       marcar('gatePerfil', perfil);
       marcar('gateVariante', variante);
       marcar('gateDescontos', descontos);
       marcar('gateTempo', tempo);
+      atualizarBonus();
       comecar();
     });
   }
